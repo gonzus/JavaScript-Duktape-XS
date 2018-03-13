@@ -12,8 +12,8 @@ sub main {
     $duk->set('gonzo', sub { print("HOI\n"); });
 
     my @commands = (
-        # "print('Hello world from Javascript!');",
-        # "print(2+3*4);",
+        "say('Hello world from Javascript!');",
+        "say(2+3*4);",
         "gonzo();",
     );
     foreach my $cmd (@commands) {

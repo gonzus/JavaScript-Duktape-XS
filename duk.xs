@@ -28,6 +28,15 @@ static duk_ret_t perl_caller(duk_context *duk)
     return 0;
 }
 
+static duk_ret_t native_say(duk_context *duk)
+{
+    duk_push_string(duk, " ");
+    duk_insert(duk, 0);
+    duk_join(duk, duk_get_top(duk) - 1);
+    printf("%s\n", duk_safe_to_string(duk, -1));
+    return 0;
+}
+
 static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
 {
     UNUSED_ARG(sv);
@@ -36,16 +45,6 @@ static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
     duk_destroy_heap(duk);
     return 0;
 }
-
-#if 0
-static duk_ret_t native_print(duk_context *duk) {
-    duk_push_string(duk, " ");
-    duk_insert(duk, 0);
-    duk_join(duk, duk_get_top(duk) - 1);
-    printf("%s\n", duk_safe_to_string(duk, -1));
-    return 0;
-}
-#endif
 
 static MGVTBL session_magic_vtbl = { .svt_free = session_dtor };
 
@@ -60,6 +59,17 @@ new(char* CLASS, HV* opt = NULL)
     duk_context *duk = duk_create_heap_default();
     RETVAL = duk;
     fprintf(stderr, "[%p] created duktape\n", duk);
+    static struct Data {
+        const char* name;
+        duk_c_function func;
+    } data[] = {
+        { "say", native_say },
+    };
+    for (unsigned int j = 0; j < sizeof(data) / sizeof(data[0]); ++j) {
+        duk_push_c_function(duk, data[j].func, DUK_VARARGS);
+        duk_put_global_string(duk, data[j].name);
+        fprintf(stderr, "[%p] added native function %s => %p\n", duk, data[j].name, data[j].func);
+    }
   OUTPUT: RETVAL
 
 int
