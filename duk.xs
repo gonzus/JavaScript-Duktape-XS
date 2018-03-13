@@ -2,10 +2,31 @@
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
-/* #include "ppport.h" */
-
+#include "ppport.h"
 #include "duktape.h"
+
 #define UNUSED_ARG(x) (void) x
+#define DUK_SLOT_CALLBACK "_perl_.callback"
+
+static duk_ret_t perl_caller(duk_context *duk)
+{
+    duk_push_current_function(duk);
+    duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
+    SV* func = (SV*) duk_get_pointer(duk, -1);
+    duk_pop_2(duk);  /* pop pointer and function */
+    if (func == 0) {
+        croak("Could not get value for property %s\n", DUK_SLOT_CALLBACK);
+    }
+
+    // TODO: pass args and return value of CV*
+    dTHX;
+    dSP;
+    PUSHMARK(SP);
+    // fprintf(stderr, "Should call function [%p]\n", func);
+    // sv_dump(func);
+    call_sv(func, G_DISCARD|G_NOARGS);
+    return 0;
+}
 
 static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
 {
@@ -16,6 +37,7 @@ static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
     return 0;
 }
 
+#if 0
 static duk_ret_t native_print(duk_context *duk) {
     duk_push_string(duk, " ");
     duk_insert(duk, 0);
@@ -23,6 +45,7 @@ static duk_ret_t native_print(duk_context *duk) {
     printf("%s\n", duk_safe_to_string(duk, -1));
     return 0;
 }
+#endif
 
 static MGVTBL session_magic_vtbl = { .svt_free = session_dtor };
 
@@ -37,26 +60,25 @@ new(char* CLASS, HV* opt = NULL)
     duk_context *duk = duk_create_heap_default();
     RETVAL = duk;
     fprintf(stderr, "[%p] created duktape\n", duk);
-
-    duk_push_c_function(duk, native_print, DUK_VARARGS);
-    duk_put_global_string(duk, "print");
-    fprintf(stderr, "[%p] added function print\n", duk);
   OUTPUT: RETVAL
 
 int
-run(duk_context* duk)
+set(duk_context* duk, const char* name, SV* value)
   CODE:
-    fprintf(stderr, "[%p] entering run\n", duk);
-    if (!duk) {
-        croak("OOPS");
-    }
+    duk_push_c_function(duk, perl_caller, DUK_VARARGS);
+    SV* func = newSVsv(value);
+    duk_push_pointer(duk, func);
+    duk_put_prop_string(duk, -2, DUK_SLOT_CALLBACK);
+    duk_put_global_string(duk, name);
+    // fprintf(stderr, "function [%s] => %p\n", name, func);
+    // sv_dump(func);
+    RETVAL = 1;
+  OUTPUT: RETVAL
 
-    const char* cmd = "print('Hello world from Javascript!');";
-    fprintf(stderr, "[%p] calling eval [%s]\n", duk, cmd);
+int
+run(duk_context* duk, const char* cmd)
+  CODE:
     duk_eval_string(duk, cmd);
-    fprintf(stderr, "[%p] called eval, result is: %s\n", duk, duk_get_string(duk, -1));
     duk_pop(duk);
-    fprintf(stderr, "[%p] popped stack\n", duk);
-
     RETVAL = 1;
   OUTPUT: RETVAL

@@ -5,9 +5,24 @@ use Data::Dumper;
 use Test::More;
 use JavaScript::Duktape::XS;
 
-my $duk = JavaScript::Duktape::XS->new();
-ok($duk, "created JavaScript::Duktape::XS object");
+sub main {
+    my $duk = JavaScript::Duktape::XS->new();
+    ok($duk, "created JavaScript::Duktape::XS object");
 
-ok($duk->run(), "ran duktape");
+    $duk->set('gonzo', sub { print("HOI\n"); });
 
-done_testing;
+    my @commands = (
+        # "print('Hello world from Javascript!');",
+        # "print(2+3*4);",
+        "gonzo();",
+    );
+    foreach my $cmd (@commands) {
+        my $run = $duk->run($cmd);
+        ok($run, "ran duktape [$cmd]");
+    }
+
+    done_testing;
+    return 0;
+}
+
+exit main();
