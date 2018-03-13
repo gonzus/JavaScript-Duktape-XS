@@ -1,0 +1,14 @@
+.gitignore
+Changes
+duk.xs
+duk_config.h
+duktape.c
+duktape.h
+lib/JavaScript/Duktape/XS.pm
+MANIFEST
+MANIFEST.SKIP
+Makefile.PL
+ppport.h
+README.md
+t/gonzo.t
+typemap
