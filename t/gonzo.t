@@ -12,13 +12,19 @@ sub main {
     $duk->set('gonzo', sub { print("HOI\n"); });
 
     my @commands = (
-        "say('Hello world from Javascript!');",
-        "say(2+3*4);",
-        "gonzo();",
+        [ "'gonzo'" => 'gonzo' ],
+        [ "3+4*5"   => 23 ],
+        [ "true"    => 1 ],
+        [ "null"    => undef ],
+        [ "say('Hello world from Javascript!');" => undef ],
+        [ "say(2+3*4);" => undef ],
+        [ "gonzo();" => undef ],
     );
     foreach my $cmd (@commands) {
-        my $run = $duk->run($cmd);
-        ok($run, "ran duktape [$cmd]");
+        my ($js, $expected) = @$cmd;
+        my $got = $duk->eval($js);
+        # printf STDERR ("EVAL [%s] => [%s]\n", $js, $got // 'undef');
+        is($got, $expected, "ran duktape [$js]");
     }
 
     done_testing;

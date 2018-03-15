@@ -85,10 +85,43 @@ set(duk_context* duk, const char* name, SV* value)
     RETVAL = 1;
   OUTPUT: RETVAL
 
-int
-run(duk_context* duk, const char* cmd)
+SV*
+eval(duk_context* duk, const char* js)
+  PREINIT:
+    SV* ret = 0;
   CODE:
-    duk_eval_string(duk, cmd);
+    duk_eval_string(duk, js);
+    switch (duk_get_type(duk, -1)) {
+        case DUK_TYPE_NONE:
+        case DUK_TYPE_UNDEFINED:
+        case DUK_TYPE_NULL:
+            ret = &PL_sv_undef;
+            break;
+        case DUK_TYPE_BOOLEAN: {
+            duk_bool_t val = duk_get_boolean(duk, -1);
+            ret = newSViv(val);
+            break;
+        }
+        case DUK_TYPE_NUMBER: {
+            duk_double_t val = duk_get_number(duk, -1);
+            ret = newSVnv(val);
+            break;
+        }
+        case DUK_TYPE_STRING: {
+            duk_size_t clen = 0;
+            const char* cstr = duk_get_lstring(duk, -1, &clen);
+            ret = newSVpvn(cstr, clen);
+            break;
+        }
+        // TODO these four
+        case DUK_TYPE_OBJECT:
+        case DUK_TYPE_BUFFER:
+        case DUK_TYPE_POINTER:
+        case DUK_TYPE_LIGHTFUNC:
+            ret = &PL_sv_undef;
+            break;
+    }
     duk_pop(duk);
-    RETVAL = 1;
+    RETVAL = ret;
+
   OUTPUT: RETVAL
