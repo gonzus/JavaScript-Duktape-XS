@@ -8,6 +8,56 @@
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
+static SV* get_perl_value(pTHX_ duk_context* duk, int pos)
+{
+    SV* ret = &PL_sv_undef;
+    switch (duk_get_type(duk, pos)) {
+        case DUK_TYPE_NONE:
+        case DUK_TYPE_UNDEFINED:
+        case DUK_TYPE_NULL: {
+            break;
+        }
+        case DUK_TYPE_BOOLEAN: {
+            duk_bool_t val = duk_get_boolean(duk, pos);
+            ret = newSViv(val);
+            break;
+        }
+        case DUK_TYPE_NUMBER: {
+            duk_double_t val = duk_get_number(duk, pos);
+            ret = newSVnv(val);
+            break;
+        }
+        case DUK_TYPE_STRING: {
+            duk_size_t clen = 0;
+            const char* cstr = duk_get_lstring(duk, pos, &clen);
+            ret = newSVpvn(cstr, clen);
+            break;
+        }
+        case DUK_TYPE_OBJECT: {
+            duk_bool_t ok = duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
+            if (ok) {
+                ret = (SV*) duk_get_pointer(duk, -1);
+                duk_pop(duk);
+            }
+            break;
+        }
+        case DUK_TYPE_POINTER: {
+            fprintf(stderr, "[%p] TODO DUK_TYPE_POINTER\n", duk);
+            break;
+        }
+        case DUK_TYPE_BUFFER: {
+            fprintf(stderr, "[%p] TODO DUK_TYPE_BUFFER\n", duk);
+            break;
+        }
+        case DUK_TYPE_LIGHTFUNC: {
+            fprintf(stderr, "[%p] TODO DUK_TYPE_LIGHTFUNC\n", duk);
+            break;
+        }
+    }
+    duk_pop(duk);
+    return ret;
+}
+
 static duk_ret_t perl_caller(duk_context *duk)
 {
     duk_push_current_function(duk);
@@ -72,16 +122,43 @@ new(char* CLASS, HV* opt = NULL)
     }
   OUTPUT: RETVAL
 
+SV*
+get(duk_context* duk, const char* name)
+  CODE:
+    SV* ret = &PL_sv_undef;
+    duk_bool_t ok = duk_get_global_string(duk, name);
+    if (ok) {
+        ret = get_perl_value(aTHX_ duk, -1);
+    }
+    RETVAL = ret;
+  OUTPUT: RETVAL
+
 int
 set(duk_context* duk, const char* name, SV* value)
   CODE:
-    duk_push_c_function(duk, perl_caller, DUK_VARARGS);
-    SV* func = newSVsv(value);
-    duk_push_pointer(duk, func);
-    duk_put_prop_string(duk, -2, DUK_SLOT_CALLBACK);
-    duk_put_global_string(duk, name);
-    // fprintf(stderr, "function [%s] => %p\n", name, func);
-    // sv_dump(func);
+    if (SvIOK(value) || SvNOK(value) || SvPOK(value)) {
+        STRLEN vlen = 0;
+        const char* vstr = SvPV_const(value, vlen);
+        duk_push_lstring(duk, vstr, vlen);
+        duk_put_global_string(duk, name);
+        // fprintf(stderr, "[%p] value [%s] => [%*.*s]\n", duk, name, vlen, vlen, vstr);
+    } else if (SvROK(value)) {
+        SV* ref = SvRV(value);
+        if (SvTYPE(ref) == SVt_PVAV) {
+            fprintf(stderr, "[%p] TODO set an arrayref\n", duk);
+        } else if (SvTYPE(ref) == SVt_PVHV) {
+            fprintf(stderr, "[%p] TODO set a hashref\n", duk);
+        } else if (SvTYPE(ref) == SVt_PVCV) {
+            duk_push_c_function(duk, perl_caller, DUK_VARARGS);
+            SV* func = newSVsv(value);
+            duk_push_pointer(duk, func);
+            duk_put_prop_string(duk, -2, DUK_SLOT_CALLBACK);
+            duk_put_global_string(duk, name);
+            // fprintf(stderr, "[%p] function [%s] => %p\n", duk, name, func);
+            // sv_dump(func);
+        }
+    }
+
     RETVAL = 1;
   OUTPUT: RETVAL
 
@@ -91,37 +168,7 @@ eval(duk_context* duk, const char* js)
     SV* ret = 0;
   CODE:
     duk_eval_string(duk, js);
-    switch (duk_get_type(duk, -1)) {
-        case DUK_TYPE_NONE:
-        case DUK_TYPE_UNDEFINED:
-        case DUK_TYPE_NULL:
-            ret = &PL_sv_undef;
-            break;
-        case DUK_TYPE_BOOLEAN: {
-            duk_bool_t val = duk_get_boolean(duk, -1);
-            ret = newSViv(val);
-            break;
-        }
-        case DUK_TYPE_NUMBER: {
-            duk_double_t val = duk_get_number(duk, -1);
-            ret = newSVnv(val);
-            break;
-        }
-        case DUK_TYPE_STRING: {
-            duk_size_t clen = 0;
-            const char* cstr = duk_get_lstring(duk, -1, &clen);
-            ret = newSVpvn(cstr, clen);
-            break;
-        }
-        // TODO these four
-        case DUK_TYPE_OBJECT:
-        case DUK_TYPE_BUFFER:
-        case DUK_TYPE_POINTER:
-        case DUK_TYPE_LIGHTFUNC:
-            ret = &PL_sv_undef;
-            break;
-    }
-    duk_pop(duk);
+    ret = get_perl_value(aTHX_ duk, -1);
     RETVAL = ret;
 
   OUTPUT: RETVAL
