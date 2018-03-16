@@ -8,11 +8,24 @@
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
+static duk_ret_t native_say(duk_context *duk);
+static duk_ret_t perl_caller(duk_context *duk);
+
 static SV* duk_to_perl(pTHX_ duk_context* duk, int pos);
 static int perl_to_duk(pTHX_ SV* value, duk_context* duk);
 
+static duk_ret_t native_say(duk_context *duk)
+{
+    duk_push_string(duk, " ");
+    duk_insert(duk, 0);
+    duk_join(duk, duk_get_top(duk) - 1);
+    printf("<%s>\n", duk_safe_to_string(duk, -1));
+    return 0; // no return value
+}
+
 static duk_ret_t perl_caller(duk_context *duk)
 {
+    // get actual perl CV stored as a function property
     duk_push_current_function(duk);
     duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
     SV* func = (SV*) duk_get_pointer(duk, -1);
@@ -21,32 +34,34 @@ static duk_ret_t perl_caller(duk_context *duk)
         croak("Could not get value for property %s\n", DUK_SLOT_CALLBACK);
     }
 
+    // prepare perl environment for calling the CV
     dTHX;
     dSP;
     ENTER;
     SAVETMPS;
     PUSHMARK(SP);
 
-    // params
+    // pass each param in the stack
     duk_idx_t nargs = duk_get_top(duk);
-    // fprintf(stderr, "function called with %d args\n", nargs);
     for (duk_idx_t j = 0; j < nargs; j++) {
-        int type = duk_get_type(duk, j);
-        // fprintf(stderr, "type of argument %d: %d\n", j, type);
         SV* val = duk_to_perl(aTHX_ duk, j);
-        // duk_pop(duk);
         mXPUSHs(val);
     }
 
+    // call actual perl CV, passing all parameters
     PUTBACK;
     call_sv(func, G_SCALAR | G_EVAL);
     SPAGAIN;
+
+    // get returned value and push it back in duktape's stack
     SV* ret = POPs;
     perl_to_duk(aTHX_ ret, duk);
+
+    // cleanup and return 1, indicating we are returning a value
     PUTBACK;
     FREETMPS;
     LEAVE;
-    return 0;
+    return 1;
 }
 
 static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
@@ -245,15 +260,6 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
         ret = 0;
     }
     return ret;
-}
-
-static duk_ret_t native_say(duk_context *duk)
-{
-    duk_push_string(duk, " ");
-    duk_insert(duk, 0);
-    duk_join(duk, duk_get_top(duk) - 1);
-    printf("%s\n", duk_safe_to_string(duk, -1));
-    return 0;
 }
 
 static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
