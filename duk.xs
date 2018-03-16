@@ -8,8 +8,13 @@
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
+static SV* duk_to_perl(pTHX_ duk_context* duk, int pos);
+static int perl_to_duk(pTHX_ SV* value, duk_context* duk);
+
 static duk_ret_t perl_caller(duk_context *duk)
 {
+    fprintf(stderr, "function called!\n");
+
     duk_push_current_function(duk);
     duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
     SV* func = (SV*) duk_get_pointer(duk, -1);
@@ -18,13 +23,30 @@ static duk_ret_t perl_caller(duk_context *duk)
         croak("Could not get value for property %s\n", DUK_SLOT_CALLBACK);
     }
 
-    // TODO: pass args and return value of CV*
     dTHX;
     dSP;
+    ENTER;
+    SAVETMPS;
     PUSHMARK(SP);
-    // fprintf(stderr, "Should call function [%p]\n", func);
-    // sv_dump(func);
-    call_sv(func, G_DISCARD|G_NOARGS);
+
+    // params
+    duk_idx_t nargs = duk_get_top(duk);
+    fprintf(stderr, "function called with %d args\n", nargs);
+    for (duk_idx_t j = 0; j < nargs; j++) {
+        int type = duk_get_type(duk, j);
+        fprintf(stderr, "type of argument %d: %d\n", j, type);
+        SV* val = duk_to_perl(aTHX_ duk, j);
+        // duk_pop(duk);
+        mXPUSHs(val);
+    }
+
+    PUTBACK;
+    call_sv(func, G_SCALAR | G_EVAL);
+    SPAGAIN;
+    // put return block here
+    PUTBACK;
+    FREETMPS;
+    LEAVE;
     return 0;
 }
 

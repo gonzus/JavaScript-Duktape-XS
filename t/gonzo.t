@@ -64,7 +64,7 @@ sub test_eval {
     my $duk = JavaScript::Duktape::XS->new();
     ok($duk, "created JavaScript::Duktape::XS object");
 
-    $duk->set('gonzo' => sub { print("HOI\n"); });
+    $duk->set('gonzo' => sub { printf("HOI [%s]\n", join(",", @_)); });
     my @commands = (
         [ "'gonzo'" => 'gonzo' ],
         [ "3+4*5"   => 23 ],
@@ -72,7 +72,8 @@ sub test_eval {
         [ "null"    => undef ],
         [ "say('Hello world from Javascript!');" => undef ],
         [ "say(2+3*4);" => undef ],
-        [ "gonzo();" => undef ],
+        # [ 'gonzo("a", 1, undef, "b");' => undef ],
+        [ 'gonzo("a", 1, 17, 4, "b");' => undef ],
     );
     foreach my $cmd (@commands) {
         my ($js, $expected) = @$cmd;
