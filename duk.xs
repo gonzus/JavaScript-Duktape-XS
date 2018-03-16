@@ -175,7 +175,7 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
 static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
 {
     int ret = 1;
-    if (value == &PL_sv_undef) {
+    if (!SvOK(value)) {
         duk_push_null(duk);
         // fprintf(stderr, "[%p] push null\n", duk);
     } else if (SvIOK(value)) {
@@ -300,7 +300,7 @@ new(char* CLASS, HV* opt = NULL)
 SV*
 get(duk_context* duk, const char* name)
   CODE:
-    SV* ret = &PL_sv_undef;
+    SV* ret = &PL_sv_undef; // return undef by default
     duk_bool_t ok = duk_get_global_string(duk, name);
     if (ok) {
         ret = duk_to_perl(aTHX_ duk, -1);
