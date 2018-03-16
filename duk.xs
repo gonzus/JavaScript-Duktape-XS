@@ -13,8 +13,6 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk);
 
 static duk_ret_t perl_caller(duk_context *duk)
 {
-    fprintf(stderr, "function called!\n");
-
     duk_push_current_function(duk);
     duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
     SV* func = (SV*) duk_get_pointer(duk, -1);
@@ -31,10 +29,10 @@ static duk_ret_t perl_caller(duk_context *duk)
 
     // params
     duk_idx_t nargs = duk_get_top(duk);
-    fprintf(stderr, "function called with %d args\n", nargs);
+    // fprintf(stderr, "function called with %d args\n", nargs);
     for (duk_idx_t j = 0; j < nargs; j++) {
         int type = duk_get_type(duk, j);
-        fprintf(stderr, "type of argument %d: %d\n", j, type);
+        // fprintf(stderr, "type of argument %d: %d\n", j, type);
         SV* val = duk_to_perl(aTHX_ duk, j);
         // duk_pop(duk);
         mXPUSHs(val);
@@ -99,6 +97,7 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
                         continue;
                     }
                     SV* nested = sv_2mortal(duk_to_perl(aTHX_ duk, -1));
+                    duk_pop(duk);
                     if (!nested) {
                         continue;
                     }
@@ -120,7 +119,7 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
                     // fprintf(stderr, "KEY [%*.*s]\n", klen, klen, kstr);
                     SV* nested = sv_2mortal(duk_to_perl(aTHX_ duk, -1));
                     // fprintf(stderr, "VAL nested for KEY [%*.*s]\n", klen, klen, kstr);
-                    duk_pop(duk); // key only, value was popped in duk_to_perl
+                    duk_pop_2(duk); // key and value
                     if (!nested) {
                         continue;
                     }
@@ -154,7 +153,6 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
             // fprintf(stderr, "REALLY WTF?\n");
             break;
     }
-    duk_pop(duk);
     return ret;
 }
 
@@ -299,6 +297,7 @@ get(duk_context* duk, const char* name)
     duk_bool_t ok = duk_get_global_string(duk, name);
     if (ok) {
         ret = duk_to_perl(aTHX_ duk, -1);
+        duk_pop(duk);
     }
     RETVAL = ret;
     // fprintf(stderr, "******* set done\n");
@@ -323,6 +322,7 @@ eval(duk_context* duk, const char* js)
   CODE:
     duk_eval_string(duk, js);
     ret = duk_to_perl(aTHX_ duk, -1);
+    duk_pop(duk);
     RETVAL = ret;
 
   OUTPUT: RETVAL
