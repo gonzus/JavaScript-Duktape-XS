@@ -6,28 +6,56 @@ use Data::Dumper;
 use Test::More;
 use JavaScript::Duktape::XS;
 
+sub test_simple {
+    my $duk = JavaScript::Duktape::XS->new();
+    ok($duk, "created JavaScript::Duktape::XS object");
+
+    my %values = (
+        foo => "2+3*4",
+        'aref' => [2,3,4],
+        'aref aref' => [2, [3,4], 5 ],
+        'href' => { foo => 1 },
+        'href' => { foo => [1,2,[3,4,5]] },
+        'aref href' => [2, { foo => 1 } ],
+        'href aref' => { foo => [2] },
+        'aref href' => [{ 1 => 2 }],
+        'aref large' => [2, 4, [ 1, 3], [ [5, 7], 9 ] ],
+        'href large' => { 'one' => [ 1, 2, { foo => 'bar'} ], 'two' => { baz => [3, 2]} },
+        'gonzo' => sub { print("HOI\n"); },
+    );
+    foreach my $name (sort keys %values) {
+        my $expected = $values{$name};
+        $duk->set($name, $expected);
+        my $got = $duk->get($name);
+        is_deeply($got, $expected, "set and got [$name]")
+            or printf STDERR ("%s", Dumper({got => $got, expected => $expected}));
+    }
+}
+
 sub test_set_get {
     my $duk = JavaScript::Duktape::XS->new();
     ok($duk, "created JavaScript::Duktape::XS object");
 
     my %values = (
-        # 'gonzo' => sub { print("HOI\n"); },
-        # 'nico'  => 11,
-        'sofi'  => [ 0, 1, 2 ],
+        'undef'  => undef,
+        '0' => 0,
+        '1' => 1,
+        '0.0' => 0.0,
+        'pi' => 3.1416,
+        'empty'  => '',
+        'string'  => 'gonzo',
+        'aref empty' => [],
+        'aref ints' => [5, 6, 7],
+        'aref mixed' => [1, 0, 'gonzo'],
+        'href empty' => {},
+        'href simple' => { 'one' => 1, 'two' => 2 },
+        'gonzo' => sub { print("HOI\n"); },
     );
     foreach my $name (sort keys %values) {
         my $expected = $values{$name};
-        printf STDERR ("==== WHAT WE EXPECT =====\n");
-        Dump($expected);
-        # printf STDERR ("BEFORE %s", Dumper($expected));
         $duk->set($name, $expected);
-        # printf STDERR ("AFTER SET %s", Dumper($expected));
         my $got = $duk->get($name);
-        printf STDERR ("==== WHAT WE GOT =====\n");
-        Dump($got);
-        # printf STDERR ("AFTER GET %s", Dumper($expected));
-        # printf STDERR ("GET [%s] = %s", $name, Dumper($got));
-        is($got, $expected, "set and got [$name]")
+        is_deeply($got, $expected, "set and got [$name]")
             or printf STDERR ("%s", Dumper({got => $got, expected => $expected}));
     }
 }
@@ -49,12 +77,12 @@ sub test_eval {
     foreach my $cmd (@commands) {
         my ($js, $expected) = @$cmd;
         my $got = $duk->eval($js);
-        printf STDERR ("EVAL [%s] => [%s]\n", $js, $got // 'undef');
-        is($got, $expected, "eval [$js]");
+        is_deeply($got, $expected, "eval [$js]");
     }
 }
 
 sub main {
+    test_simple();
     test_set_get();
     test_eval();
     done_testing;
