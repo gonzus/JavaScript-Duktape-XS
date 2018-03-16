@@ -41,7 +41,8 @@ static duk_ret_t perl_caller(duk_context *duk)
     PUTBACK;
     call_sv(func, G_SCALAR | G_EVAL);
     SPAGAIN;
-    // put return block here
+    SV* ret = POPs;
+    perl_to_duk(aTHX_ ret, duk);
     PUTBACK;
     FREETMPS;
     LEAVE;
