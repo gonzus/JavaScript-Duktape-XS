@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 
+use Devel::Peek;
 use Data::Dumper;
 use Test::More;
 use JavaScript::Duktape::XS;
@@ -10,16 +11,24 @@ sub test_set_get {
     ok($duk, "created JavaScript::Duktape::XS object");
 
     my %values = (
-        'gonzo' => sub { print("HOI\n"); },
-        'nico'  => 11,
+        # 'gonzo' => sub { print("HOI\n"); },
+        # 'nico'  => 11,
         'sofi'  => [ 0, 1, 2 ],
     );
     foreach my $name (sort keys %values) {
         my $expected = $values{$name};
+        printf STDERR ("==== WHAT WE EXPECT =====\n");
+        Dump($expected);
+        # printf STDERR ("BEFORE %s", Dumper($expected));
         $duk->set($name, $expected);
+        # printf STDERR ("AFTER SET %s", Dumper($expected));
         my $got = $duk->get($name);
-        printf STDERR ("GET [%s] = [%s]\n", $name, $got // 'UNDEF');
-        is($got, $expected, "set and got [$name]");
+        printf STDERR ("==== WHAT WE GOT =====\n");
+        Dump($got);
+        # printf STDERR ("AFTER GET %s", Dumper($expected));
+        # printf STDERR ("GET [%s] = %s", $name, Dumper($got));
+        is($got, $expected, "set and got [$name]")
+            or printf STDERR ("%s", Dumper({got => $got, expected => $expected}));
     }
 }
 

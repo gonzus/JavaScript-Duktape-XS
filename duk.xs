@@ -10,7 +10,7 @@
 
 static SV* get_perl_value(pTHX_ duk_context* duk, int pos)
 {
-    SV* ret = &PL_sv_undef;
+    SV* ret = &PL_sv_undef; // return undef by default
     switch (duk_get_type(duk, pos)) {
         case DUK_TYPE_NONE:
         case DUK_TYPE_UNDEFINED:
@@ -24,7 +24,7 @@ static SV* get_perl_value(pTHX_ duk_context* duk, int pos)
         }
         case DUK_TYPE_NUMBER: {
             duk_double_t val = duk_get_number(duk, pos);
-            ret = newSVnv(val);
+            ret = newSVnv(val);  // JS numbers are always doubles
             break;
         }
         case DUK_TYPE_STRING: {
@@ -34,10 +34,46 @@ static SV* get_perl_value(pTHX_ duk_context* duk, int pos)
             break;
         }
         case DUK_TYPE_OBJECT: {
-            duk_bool_t ok = duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
-            if (ok) {
-                ret = (SV*) duk_get_pointer(duk, -1);
-                duk_pop(duk);
+            if (duk_is_c_function(duk, pos)) {
+                // if the JS function has a slot with the Perl callback,
+                // then we know we created it, so we return it
+                if (duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK)) {
+                    ret = (SV*) duk_get_pointer(duk, -1);
+                    duk_pop(duk);
+                }
+            } else if (duk_is_array(duk, pos)) {
+                int n = duk_get_length(duk, pos);
+                AV* array = newAV();
+                for (int j = 0; j < n; ++j) {
+                    if (!duk_get_prop_index(duk, pos, j)) {
+                        continue;
+                    }
+                    SV* tmp = 0;
+                    if (duk_is_number(duk, -1)) {
+                        // fprintf(stderr, "NUMBER\n");
+                        duk_double_t val = duk_get_number(duk, -1);
+                        tmp = sv_2mortal(newSViv((int) val));  // IV for now
+                    } else if (duk_is_string(duk, -1)) {
+                        // fprintf(stderr, "STRING\n");
+                        duk_size_t clen = 0;
+                        const char* cstr = duk_get_lstring(duk, pos, &clen);
+                        tmp = sv_2mortal(newSVpvn(cstr, clen));
+                    } else {
+                        fprintf(stderr, "WTF?\n");
+                    }
+                    duk_pop(duk);
+                    if (!tmp) {
+                        continue;
+                    }
+                    if (av_store(array, j, tmp)) {
+                        SvREFCNT_inc(tmp);
+                        fprintf(stderr, "STORE\n");
+                    }
+                }
+                ret = newRV_noinc((SV*) array);
+                // fprintf(stderr, "Created ref\n");
+                // sv_dump(ret);
+                // duk_pop(duk);
             }
             break;
         }
@@ -143,9 +179,47 @@ set(duk_context* duk, const char* name, SV* value)
         duk_put_global_string(duk, name);
         // fprintf(stderr, "[%p] value [%s] => [%*.*s]\n", duk, name, vlen, vlen, vstr);
     } else if (SvROK(value)) {
+        STRLEN vlen = 0;
+        const char* vstr = 0;
         SV* ref = SvRV(value);
         if (SvTYPE(ref) == SVt_PVAV) {
-            fprintf(stderr, "[%p] TODO set an arrayref\n", duk);
+            AV* values = (AV*) ref;
+            // sv_dump(values);
+            duk_idx_t arr_idx = duk_push_array(duk);
+            int n = av_top_index(values);
+            int count = 0;
+            for (int j = 0; j <= n; ++j) {
+                SV** elem = av_fetch(values, j, 0);
+                // sv_dump(*elem);
+                if (!*elem || *elem == &PL_sv_undef) {
+                    break;
+                }
+                if (!SvOK(*elem)) {
+                    continue;
+                }
+                if (SvIOK(*elem)) {
+                    int val = SvIV(*elem);
+                    // fprintf(stderr, "ARR %d => int %d\n", count, val);
+                    duk_push_int(duk, val);
+                    // duk_push_number(duk, val);
+                } else if (SvNOK(*elem)) {
+                    double val = SvNV(*elem);
+                    fprintf(stderr, "ARR %d => double %lf\n", count, val);
+                    duk_push_number(duk, val);
+                } else {
+                    vstr = SvPV_const(*elem, vlen);
+                    fprintf(stderr, "ARR %d => string [%*.*s]\n", count, vlen, vlen, vstr);
+                    duk_push_lstring(duk, vstr, vlen);
+                }
+                duk_put_prop_index(duk, arr_idx, count);
+                ++count;
+            }
+            if (count <= 0) {
+                duk_pop(duk);  /* pop array */
+            } else {
+                fprintf(stderr, "ARR %s with %d elems\n", name, count);
+                duk_put_global_string(duk, name);
+            }
         } else if (SvTYPE(ref) == SVt_PVHV) {
             fprintf(stderr, "[%p] TODO set a hashref\n", duk);
         } else if (SvTYPE(ref) == SVt_PVCV) {
