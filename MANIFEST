@@ -5,6 +5,7 @@ duk_config.h
 duktape.c
 duktape.h
 lib/JavaScript/Duktape/XS.pm
+LICENSE
 MANIFEST
 MANIFEST.SKIP
 Makefile.PL
