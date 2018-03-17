@@ -20,7 +20,7 @@ Version 0.000001
 
 # COPYRIGHT AND LICENSE
 
-This software is Copyright (c) 2016 by Gonzalo Diethelm.
+This software is Copyright (c) 2018 by Gonzalo Diethelm.
 
 This is free software, licensed under:
 
