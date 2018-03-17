@@ -19,7 +19,7 @@ static duk_ret_t native_say(duk_context *duk)
     duk_push_string(duk, " ");
     duk_insert(duk, 0);
     duk_join(duk, duk_get_top(duk) - 1);
-    printf("<%s>\n", duk_safe_to_string(duk, -1));
+    PerlIO_stdoutf("%s\n", duk_safe_to_string(duk, -1));
     return 0; // no return value
 }
 

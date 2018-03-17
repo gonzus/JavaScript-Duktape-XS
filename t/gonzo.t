@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 
+use POSIX qw< dup dup2 >;
 use Devel::Peek;
 use Data::Dumper;
 use Test::More;
@@ -64,23 +65,46 @@ sub test_eval {
     my $duk = JavaScript::Duktape::XS->new();
     ok($duk, "created JavaScript::Duktape::XS object");
 
-    $duk->set('gonzo' => sub { printf("HOI [%s]\n", join(",", map +(defined $_ ? $_ : "UNDEF"), @_)); return scalar @_; });
+    my $callback = sub {
+        printf("HOI [%s]\n", join(",", map +(defined $_ ? $_ : "UNDEF"), @_));
+        return scalar @_;
+    };
+    $duk->set('gonzo' => $callback);
     my @commands = (
         [ "'gonzo'" => 'gonzo' ],
         [ "3+4*5"   => 23 ],
         [ "true"    => 1 ],
         [ "null"    => undef ],
-        [ "say('Hello world from Javascript!');" => undef ],
-        [ "say(2+3*4);" => undef ],
-        [ 'say(gonzo());' => undef ],
-        [ 'say(gonzo(1));' => undef ],
-        [ 'say(gonzo("a", "b"));' => undef ],
-        [ 'say(gonzo("a", 1, null, "b"));' => undef ],
+        [ "say('Hello world from Javascript!');" => undef, 'Hello world from Javascript!' ],
+        [ "say(2+3*4)" => undef, '14' ],
+        [ 'gonzo()' => 0, 'HOI []' ],
+        [ 'gonzo(1)' => 1, 'HOI [1]' ],
+        [ 'gonzo("a", "b")' => 2, 'HOI [a,b]' ],
+        [ 'gonzo("a", 1, null, "b")' => 4, 'HOI [a,1,UNDEF,b]' ],
     );
+
     foreach my $cmd (@commands) {
-        my ($js, $expected) = @$cmd;
+        my ($js, $expected_return, $expected_output) = @$cmd;
+        $expected_output //= '';
+        my $output = '';
+
+        # Move STDOUT to store results in $output
+        my $real_stdout;
+        open $real_stdout, ">&STDOUT" || warn "Can't preserve STDOUT\n$!\n";
+        close STDOUT;
+        open STDOUT, '>', \$output or die "Can't open STDOUT: $!";
+        select STDOUT; $| = 1;
+
         my $got = $duk->eval($js);
-        is_deeply($got, $expected, "eval [$js]");
+
+        # Now recover original STDOUT
+        close STDOUT;
+        open STDOUT, ">&", $real_stdout;
+        select STDOUT; $| = 1;
+
+        chomp($output);
+        is($output, $expected_output, "eval output [$js]");
+        is_deeply($got, $expected_return, "eval return [$js]");
     }
 }
 
