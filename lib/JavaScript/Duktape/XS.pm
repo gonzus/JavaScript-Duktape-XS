@@ -21,7 +21,7 @@ __END__
 
 =head1 NAME
 
-JavaScript::Duktape::XS - WTF?
+JavaScript::Duktape::XS - Perl XS binding for the duktape Javascript engine
 
 =head1 VERSION
 
