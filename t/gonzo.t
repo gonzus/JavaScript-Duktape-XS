@@ -121,21 +121,23 @@ sub test_roundtrip {
     };
     $duk->set('perl_test' => $callback);
     my %args = (
-        'empty' => [ [], '' ],
-        'undef' => [ [undef], 'null' ],
-        'one number' => [ [1], '1' ],
-        'two strings' => [ ['a','b'], q{'a','b'} ],
-        'nested aref' => [ [ [ 1, 2, [ 3, [], { foo => [5, 6] } ], [8] ] ],
-                           q{[1,2,[3,[],{"foo":[5,6]}],[8]]} ],
-        'nested href' => [ [ { foo => 1, bar => [4,[],5,{},{baz=>3}] } ],
-                           q<{"foo":1,"bar":[4,[],5,{},{"baz":3}]}> ],
+        'empty' => [],
+        'undef' => [undef],
+        'one_number' => [1],
+        'two_strings' => ['a','b'],
+        'nested_aref' => [ [ 1, 2, [ 3, [], { foo => [5, 6] } ], [8] ] ],
+        'nested_href' => [ { foo => 1, bar => [4,[],5,{},{baz=>3}] } ],
     );
     foreach my $name (sort keys %args) {
-        my ($perl_args, $js_args) = @{ $args{$name} };
+        my $args = $args{$name};
+        $duk->set($name, $args);
+        my $got_set = $duk->get($name);
+        is_deeply($got_set, $args, "set / get works for $name");
+
         $test_name = $name;
-        $expected_args = $perl_args;
-        my $got = $duk->eval("perl_test($js_args)");
-        is_deeply($got, $perl_args, "got args $name");
+        $expected_args = $args;
+        my $got_eval = $duk->eval("perl_test.apply(this, $name)");
+        is_deeply($got_eval, $args, "perl_test() works for $name");
     }
 }
 
