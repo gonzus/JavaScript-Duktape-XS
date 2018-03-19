@@ -36,7 +36,7 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk);
  */
 static duk_ret_t native_say(duk_context *duk)
 {
-    duk_push_string(duk, " ");
+    duk_push_lstring(duk, " ", 1);
     duk_insert(duk, 0);
     duk_join(duk, duk_get_top(duk) - 1);
     PerlIO_stdoutf("%s\n", duk_safe_to_string(duk, -1));
@@ -51,7 +51,9 @@ static duk_ret_t perl_caller(duk_context *duk)
 {
     // get actual Perl CV stored as a function property
     duk_push_current_function(duk);
-    duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK);
+    if (!duk_get_prop_lstring(duk, -1, DUK_SLOT_CALLBACK, sizeof(DUK_SLOT_CALLBACK) - 1)) {
+        croak("Calling Perl handler for a non-Perl function\n");
+    }
     SV* func = (SV*) duk_get_pointer(duk, -1);
     duk_pop_2(duk);  /* pop pointer and function */
     if (func == 0) {
@@ -118,23 +120,22 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
             if (duk_is_c_function(duk, pos)) {
                 // if the JS function has a slot with the Perl callback,
                 // then we know we created it, so we return that
-                if (duk_get_prop_string(duk, -1, DUK_SLOT_CALLBACK)) {
-                    ret = (SV*) duk_get_pointer(duk, -1);
-                    duk_pop(duk); // pop function
-                } else {
+                if (!duk_get_prop_lstring(duk, -1, DUK_SLOT_CALLBACK, sizeof(DUK_SLOT_CALLBACK) - 1)) {
                     croak("JS object is an unrecognized function\n");
                 }
+                ret = (SV*) duk_get_pointer(duk, -1);
+                duk_pop(duk); // pop function
             } else if (duk_is_array(duk, pos)) {
-                int n = duk_get_length(duk, pos);
+                int array_top = duk_get_length(duk, pos);
                 AV* values = newAV();
-                for (int j = 0; j < n; ++j) {
+                for (int j = 0; j < array_top; ++j) {
                     if (!duk_get_prop_index(duk, pos, j)) {
-                        continue;
+                        continue; // index doesn't exist => end of array
                     }
                     SV* nested = sv_2mortal(duk_to_perl(aTHX_ duk, -1));
                     duk_pop(duk); // value in current pos
                     if (!nested) {
-                        continue;
+                        croak("Could not create Perl SV for array");
                     }
                     if (av_store(values, j, nested)) {
                         SvREFCNT_inc(nested);
@@ -144,13 +145,13 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
             } else if (duk_is_object(duk, pos)) {
                 HV* values = newHV();
                 duk_enum(duk, pos, 0);
-                while (duk_next(duk, -1, 1)) {
+                while (duk_next(duk, -1, 1)) { // get key and value
                     duk_size_t klen = 0;
                     const char* kstr = duk_get_lstring(duk, -2, &klen);
                     SV* nested = sv_2mortal(duk_to_perl(aTHX_ duk, -1));
                     duk_pop_2(duk); // key and value
                     if (!nested) {
-                        continue;
+                        croak("Could not create Perl SV for hash");
                     }
                     if (hv_store(values, kstr, klen, nested, 0)) {
                         SvREFCNT_inc(nested);
@@ -201,25 +202,26 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
         SV* ref = SvRV(value);
         if (SvTYPE(ref) == SVt_PVAV) {
             AV* values = (AV*) ref;
-            duk_idx_t pos = duk_push_array(duk);
-            int n = av_top_index(values);
+            duk_idx_t array_pos = duk_push_array(duk);
+            int array_top = av_top_index(values);
             int count = 0;
-            for (int j = 0; j <= n; ++j) {
+            for (int j = 0; j <= array_top; ++j) { // yes, [0, array_top]
                 SV** elem = av_fetch(values, j, 0);
                 if (!elem || !*elem) {
-                    break;
+                    break; // could not get element
                 }
                 if (!perl_to_duk(aTHX_ *elem, duk)) {
-                    continue;
+                    croak("Could not create JS element for array");
                 }
-                duk_put_prop_index(duk, pos, count);
+                if (!duk_put_prop_index(duk, array_pos, count)) {
+                    croak("Could not push JS element for array");
+                }
                 ++count;
             }
         } else if (SvTYPE(ref) == SVt_PVHV) {
             HV* values = (HV*) ref;
-            duk_idx_t obj = duk_push_object(duk);
+            duk_idx_t hash_pos = duk_push_object(duk);
             hv_iterinit(values);
-            int count = 0;
             while (1) {
                 SV* value = 0;
                 I32 klen = 0;
@@ -237,18 +239,24 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
                     continue; // invalid value
                 }
                 if (!perl_to_duk(aTHX_ value, duk)) {
-                    continue;
+                    croak("Could not create JS element for hash");
                 }
-                duk_put_prop_lstring(duk, obj, kstr, klen);
-                ++count;
+                if (! duk_put_prop_lstring(duk, hash_pos, kstr, klen)) {
+                    croak("Could not push JS element for hash");
+                }
             }
         } else if (SvTYPE(ref) == SVt_PVCV) {
             // use perl_caller as generic handler, but store the real callback
             // in a slot, from where we can later retrieve it
             duk_push_c_function(duk, perl_caller, DUK_VARARGS);
             SV* func = newSVsv(value);
+            if (!func) {
+                croak("Could not create copy of Perl callback");
+            }
             duk_push_pointer(duk, func);
-            duk_put_prop_string(duk, -2, DUK_SLOT_CALLBACK);
+            if (! duk_put_prop_lstring(duk, -2, DUK_SLOT_CALLBACK, sizeof(DUK_SLOT_CALLBACK) - 1)) {
+                croak("Could not associate C dispatcher and Perl callback");
+            }
         } else {
             croak("Don't know how to deal with an undetermined Perl reference\n");
             ret = 0;
@@ -275,7 +283,7 @@ static void duk_fatal_error_handler(void* data, const char *msg)
     abort();
 }
 
-static int register_native_functions(duk_context* duk)
+static int register_native_functions(pTHX_ duk_context* duk)
 {
     static struct Data {
         const char* name;
@@ -286,7 +294,9 @@ static int register_native_functions(duk_context* duk)
     int n = sizeof(data) / sizeof(data[0]);
     for (int j = 0; j < n; ++j) {
         duk_push_c_function(duk, data[j].func, DUK_VARARGS);
-        duk_put_global_string(duk, data[j].name);
+        if (!duk_put_global_string(duk, data[j].name)) {
+            croak("Could not register native function %s\n", data[j].name);
+        }
     }
     return n;
 }
@@ -302,7 +312,10 @@ duk_context*
 new(char* CLASS, HV* opt = NULL)
   CODE:
     RETVAL = duk_create_heap(0, 0, 0, (void*) 0xdeadbeef, duk_fatal_error_handler);
-    register_native_functions(RETVAL);
+    if (!RETVAL) {
+        croak("Could not create duk heap\n");
+    }
+    register_native_functions(aTHX_ RETVAL);
   OUTPUT: RETVAL
 
 SV*
@@ -320,7 +333,9 @@ set(duk_context* duk, const char* name, SV* value)
   CODE:
     RETVAL = 0;
     if (perl_to_duk(aTHX_ value, duk)) {
-        duk_put_global_string(duk, name);
+        if (!duk_put_global_string(duk, name)) {
+            croak("Could not save duk value for %s\n", name);
+        }
         RETVAL = 1;
     }
   OUTPUT: RETVAL
