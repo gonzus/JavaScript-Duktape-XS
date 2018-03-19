@@ -130,14 +130,19 @@ sub test_roundtrip {
     );
     foreach my $name (sort keys %args) {
         my $args = $args{$name};
+
         $duk->set($name, $args);
         my $got_set = $duk->get($name);
         is_deeply($got_set, $args, "set / get works for $name");
 
+        my $js_name = "js_$name";
         $test_name = $name;
         $expected_args = $args;
-        my $got_eval = $duk->eval("perl_test.apply(this, $name)");
-        is_deeply($got_eval, $args, "perl_test() works for $name");
+        my $got_eval = $duk->eval("$js_name = perl_test.apply(this, $name)");
+        is_deeply($got_eval, $args, "calling perl_test() works for $name");
+
+        my $got_get = $duk->get($js_name);
+        is_deeply($got_get, $args, "return value from perl_test() works for $name");
     }
 }
 
