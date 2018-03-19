@@ -268,6 +268,13 @@ static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
     return 0;
 }
 
+static void duk_fatal_error_handler(void* data, const char *msg)
+{
+    UNUSED_ARG(data);
+    fprintf(stderr, "duktape fatal error, aborting: %s\n", msg ? msg : "*NONE*");
+    abort();
+}
+
 static int register_native_functions(duk_context* duk)
 {
     static struct Data {
@@ -294,7 +301,7 @@ PROTOTYPES: DISABLE
 duk_context*
 new(char* CLASS, HV* opt = NULL)
   CODE:
-    RETVAL = duk_create_heap_default();
+    RETVAL = duk_create_heap(0, 0, 0, (void*) 0xdeadbeef, duk_fatal_error_handler);
     register_native_functions(RETVAL);
   OUTPUT: RETVAL
 
