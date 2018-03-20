@@ -317,6 +317,8 @@ static void duk_fatal_error_handler(void* data, const char *msg)
     abort();
 }
 
+void poll_register(duk_context *ctx);
+
 static int register_native_functions(pTHX_ duk_context* duk)
 {
     static struct Data {
@@ -332,6 +334,7 @@ static int register_native_functions(pTHX_ duk_context* duk)
             croak("Could not register native function %s\n", data[j].name);
         }
     }
+    poll_register(duk);
     return n;
 }
 
