@@ -34,7 +34,7 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk);
 /*
  * This is an example of a native C function that we can call from our JS code.
  */
-static duk_ret_t native_say(duk_context *duk)
+static duk_ret_t native_print(duk_context *duk)
 {
     duk_push_lstring(duk, " ", 1);
     duk_insert(duk, 0);
@@ -323,7 +323,7 @@ static int register_native_functions(pTHX_ duk_context* duk)
         const char* name;
         duk_c_function func;
     } data[] = {
-        { "say", native_say },
+        { "print", native_print },
     };
     int n = sizeof(data) / sizeof(data[0]);
     for (int j = 0; j < n; ++j) {
