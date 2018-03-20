@@ -4,6 +4,9 @@ duk.xs
 duk_config.h
 duktape.c
 duktape.h
+duk_poll.c
+duk_poll.h
+ecma_eventloop.js
 lib/JavaScript/Duktape/XS.pm
 LICENSE
 MANIFEST
