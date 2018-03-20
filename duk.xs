@@ -11,6 +11,7 @@
  * http://duktape.org/index.html
  */
 #include "duktape.h"
+#include "duk_poll.h"
 
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
@@ -319,8 +320,6 @@ static void duk_fatal_error_handler(void* data, const char *msg)
     fprintf(stderr, "duktape fatal error, aborting: %s\n", msg ? msg : "*NONE*");
     abort();
 }
-
-void poll_register(duk_context *ctx);
 
 static int register_native_functions(pTHX_ duk_context* duk)
 {

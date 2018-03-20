@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include "duktape.h"
+#include "duk_poll.h"
 
 static int poll_poll(duk_context *ctx) {
 	int timeout = duk_to_int(ctx, 1);
