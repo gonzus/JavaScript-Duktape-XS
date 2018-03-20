@@ -286,7 +286,10 @@ static int set_global_or_property(pTHX_ duk_context* duk, const char* name, SV* 
         }
     } else {
         duk_push_lstring(duk, name + last_dot + 1, len - last_dot - 1);
-        duk_eval_lstring(duk, name, last_dot);
+        if (duk_peval_lstring(duk, name, last_dot) != 0) {
+            croak("Could not eval JS object %*.*s: %s\n",
+                  last_dot, last_dot,name,  duk_safe_to_string(duk, -1));
+        }
 #if 0
         duk_enum(duk, -1, 0);
         while (duk_next(duk, -1, 0)) {
@@ -374,7 +377,9 @@ set(duk_context* duk, const char* name, SV* value)
 SV*
 eval(duk_context* duk, const char* js)
   CODE:
-    duk_eval_string(duk, js);
+    if (duk_peval_string(duk, js)) {
+        croak("JS eval failed: %s\n", duk_safe_to_string(duk, -1));
+    }
     RETVAL = duk_to_perl(aTHX_ duk, -1);
     duk_pop(duk);
   OUTPUT: RETVAL
