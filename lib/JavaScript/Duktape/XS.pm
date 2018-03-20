@@ -21,7 +21,8 @@ __END__
 
 =head1 NAME
 
-JavaScript::Duktape::XS - Perl XS binding for the duktape Javascript engine
+JavaScript::Duktape::XS - Perl XS binding for the Duktape Javascript embeddable
+engine
 
 =head1 VERSION
 
@@ -29,15 +30,30 @@ Version 0.000001
 
 =head1 SYNOPSIS
 
+    my $duk = JavaScript::Duktape::XS->new();
+    $duk->set('global_name', [1, 2, 3]);
+    $duk->set('my.object.slot', { foo => [ 4, 5 ] });
+    $duk->set('function_name', sub { my @args = @_; return \@args; });
+    my $aref = $duk->get('global_name');
+    my $returned = $duk->eval('function_name(my.object.slot)');
+
 =head1 DESCRIPTION
+
+This module provides an XS wrapper to call Duktape from Perl.
 
 =head1 METHODS/ATTRIBUTES
 
-=head2 foo
+=head2 new
 
-=head2 bar
+=head2 set
+
+=head2 get
+
+=head2 eval
 
 =head1 SEE ALSO
+
+L<< https://metacpan.org/pod/JavaScript::Duktape >>
 
 =head1 LICENSE
 
@@ -55,3 +71,10 @@ the terms of the MIT license.
 =back
 
 =head1 THANKS
+
+=over 4
+
+=item * L<< Sami Vaarala|https://github.com/svaarala >> for creating the L<<
+Duktape Javascript embeddable engine|http://duktape.org >>.
+
+=back
