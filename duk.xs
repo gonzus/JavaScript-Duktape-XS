@@ -268,6 +268,40 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
     return ret;
 }
 
+static int set_global_or_property(pTHX_ duk_context* duk, const char* name, SV* value)
+{
+    if (!perl_to_duk(aTHX_ value, duk)) {
+        return 0;
+    }
+    int last_dot = -1;
+    int len = 0;
+    for (; name[len] != '\0'; ++len) {
+        if (name[len] == '.') {
+            last_dot = len;
+        }
+    }
+    if (last_dot < 0) {
+        if (!duk_put_global_lstring(duk, name, len)) {
+            croak("Could not save duk value for %s\n", name);
+        }
+    } else {
+        duk_push_lstring(duk, name + last_dot + 1, len - last_dot - 1);
+        duk_eval_lstring(duk, name, last_dot);
+#if 0
+        duk_enum(duk, -1, 0);
+        while (duk_next(duk, -1, 0)) {
+            fprintf(stderr, "KEY [%s]\n", duk_get_string(duk, -1));
+            duk_pop(duk);  /* pop_key */
+        }
+#endif
+         // Have [value, key, object], need [object, key, value], hence swap
+        duk_swap(duk, -3, -1);
+        duk_put_prop(duk, -3);
+        duk_pop(duk); // pop object
+    }
+    return 1;
+}
+
 static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
 {
     UNUSED_ARG(sv);
@@ -331,13 +365,7 @@ get(duk_context* duk, const char* name)
 int
 set(duk_context* duk, const char* name, SV* value)
   CODE:
-    RETVAL = 0;
-    if (perl_to_duk(aTHX_ value, duk)) {
-        if (!duk_put_global_string(duk, name)) {
-            croak("Could not save duk value for %s\n", name);
-        }
-        RETVAL = 1;
-    }
+    RETVAL = set_global_or_property(aTHX_ duk, name, value);
   OUTPUT: RETVAL
 
 SV*
