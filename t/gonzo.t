@@ -11,6 +11,7 @@ sub test_set_get {
     my $duk = JavaScript::Duktape::XS->new();
     ok($duk, "created JavaScript::Duktape::XS object");
 
+    my $obj = {}; bless $obj, "Gonzo";
     my %values = (
         'undef'  => undef,
         '0_int' => 0,
@@ -25,6 +26,7 @@ sub test_set_get {
         'href_empty' => {},
         'href_simple' => { 'one' => 1, 'two' => 2 },
         'gonzo' => sub { print("HOI\n"); },
+        'object' => $obj,
 
         'foo' => "2+3*4",
         'aref' => [2,3,4],

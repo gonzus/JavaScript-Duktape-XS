@@ -166,7 +166,7 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
             break;
         }
         case DUK_TYPE_POINTER: {
-            croak("Don't know how to deal with a JS pointer\n");
+            ret = (SV*) duk_get_pointer(duk, -1);
             break;
         }
         case DUK_TYPE_BUFFER: {
@@ -271,7 +271,10 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
 
 static int set_global_or_property(pTHX_ duk_context* duk, const char* name, SV* value)
 {
-    if (!perl_to_duk(aTHX_ value, duk)) {
+    if (sv_isobject(value)) {
+        SV* obj = newSVsv(value);
+        duk_push_pointer(duk, obj);
+    } else if (!perl_to_duk(aTHX_ value, duk)) {
         return 0;
     }
     int last_dot = -1;
