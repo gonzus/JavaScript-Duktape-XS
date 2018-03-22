@@ -50,6 +50,8 @@ static duk_ret_t native_print(duk_context *duk)
  */
 static duk_ret_t perl_caller(duk_context *duk)
 {
+    duk_idx_t j = 0;
+
     // get actual Perl CV stored as a function property
     duk_push_current_function(duk);
     if (!duk_get_prop_lstring(duk, -1, DUK_SLOT_CALLBACK, sizeof(DUK_SLOT_CALLBACK) - 1)) {
@@ -70,7 +72,7 @@ static duk_ret_t perl_caller(duk_context *duk)
 
     // pass in the stack each of the params we received
     duk_idx_t nargs = duk_get_top(duk);
-    for (duk_idx_t j = 0; j < nargs; j++) {
+    for (j = 0; j < nargs; j++) {
         SV* val = duk_to_perl(aTHX_ duk, j);
         mXPUSHs(val);
     }
@@ -129,7 +131,8 @@ static SV* duk_to_perl(pTHX_ duk_context* duk, int pos)
             } else if (duk_is_array(duk, pos)) {
                 int array_top = duk_get_length(duk, pos);
                 AV* values = newAV();
-                for (int j = 0; j < array_top; ++j) {
+                int j = 0;
+                for (j = 0; j < array_top; ++j) {
                     if (!duk_get_prop_index(duk, pos, j)) {
                         continue; // index doesn't exist => end of array
                     }
@@ -206,7 +209,8 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* duk)
             duk_idx_t array_pos = duk_push_array(duk);
             int array_top = av_top_index(values);
             int count = 0;
-            for (int j = 0; j <= array_top; ++j) { // yes, [0, array_top]
+            int j = 0;
+            for (j = 0; j <= array_top; ++j) { // yes, [0, array_top]
                 SV** elem = av_fetch(values, j, 0);
                 if (!elem || !*elem) {
                     break; // could not get element
@@ -333,7 +337,8 @@ static int register_native_functions(pTHX_ duk_context* duk)
         { "print", native_print },
     };
     int n = sizeof(data) / sizeof(data[0]);
-    for (int j = 0; j < n; ++j) {
+    int j = 0;
+    for (j = 0; j < n; ++j) {
         duk_push_c_function(duk, data[j].func, DUK_VARARGS);
         if (!duk_put_global_string(duk, data[j].name)) {
             croak("Could not register native function %s\n", data[j].name);
@@ -353,6 +358,7 @@ PROTOTYPES: DISABLE
 duk_context*
 new(char* CLASS, HV* opt = NULL)
   CODE:
+    UNUSED_ARG(opt);
     RETVAL = duk_create_heap(0, 0, 0, (void*) 0xdeadbeef, duk_fatal_error_handler);
     if (!RETVAL) {
         croak("Could not create duk heap\n");
