@@ -1,2 +1,5 @@
+0.000031    2018-03-23
+            * Restrict to Perl 5.18 and above, to avoid CPAN testing failures.
+
 0.000030    2018-03-22
             * Initial release.
