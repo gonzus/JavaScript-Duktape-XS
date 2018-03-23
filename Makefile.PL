@@ -6,7 +6,7 @@ WriteMakefile(
     VERSION_FROM   => 'lib/JavaScript/Duktape/XS.pm',
     ABSTRACT_FROM  => 'lib/JavaScript/Duktape/XS.pm',
     LICENSE        => 'mit',
-    MIN_PERL_VERSION => 5.008009,
+    MIN_PERL_VERSION => 5.018000,
     PREREQ_PM      => {
         'XSLoader'    => 0,
     },
