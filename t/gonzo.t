@@ -17,7 +17,7 @@ sub test_set_get {
         '0_int' => 0,
         '1' => 1,
         '0_double' => 0.0,
-        'pi' => 3.1415,
+        '1/10' => 0.1,
         'empty'  => '',
         'string'  => 'gonzo',
         'aref_empty' => [],
