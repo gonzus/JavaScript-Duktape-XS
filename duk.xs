@@ -11,7 +11,7 @@
  * http://duktape.org/index.html
  */
 #include "duktape.h"
-#include "duk_poll.h"
+#include "c_eventloop.h"
 
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
@@ -344,7 +344,7 @@ static int register_native_functions(pTHX_ duk_context* duk)
             croak("Could not register native function %s\n", data[j].name);
         }
     }
-    poll_register(duk);
+    eventloop_register(duk);
     return n;
 }
 
