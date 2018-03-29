@@ -15,4 +15,5 @@ Makefile.PL
 ppport.h
 README.md
 t/gonzo.t
+t/timeout.t
 typemap
