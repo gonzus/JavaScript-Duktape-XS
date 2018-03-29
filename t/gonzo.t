@@ -1,8 +1,6 @@
 use strict;
 use warnings;
 
-use POSIX qw< dup dup2 >;
-use Devel::Peek;
 use Data::Dumper;
 use Test::More;
 use JavaScript::Duktape::XS;
