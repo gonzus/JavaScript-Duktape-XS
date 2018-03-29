@@ -324,7 +324,8 @@ static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
 static void duk_fatal_error_handler(void* data, const char *msg)
 {
     UNUSED_ARG(data);
-    fprintf(stderr, "duktape fatal error, aborting: %s\n", msg ? msg : "*NONE*");
+    dTHX;
+    PerlIO_printf(PerlIO_stderr(), "duktape fatal error, aborting: %s\n", msg ? msg : "*NONE*");
     abort();
 }
 
