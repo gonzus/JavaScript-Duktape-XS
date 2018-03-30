@@ -23,31 +23,31 @@ var perl_ret = 'EMPTY';
 var perl_err = 'EMPTY';
 
 function main() {
-    perl_ret+=1
+    perl_ret += 1
 
     setTimeout(function () {
-        perl_ret+=2
-    })
-
-    perl_ret+=3
-
-    setTimeout(function () {
-        perl_ret+=4
-    }, 100)
-
-    perl_ret+=5
-
-    setTimeout(function () {
-        perl_ret+=6
+        perl_ret += 7
     }, 1000)
 
-    perl_ret+=7
+    perl_ret += 2
+
+    setTimeout(function () {
+        perl_ret += 6
+    }, 100)
+
+    perl_ret += 3
+
+    setTimeout(function () {
+        perl_ret += 5
+    })
+
+    perl_ret += 4
 }
 JS
     my $got_eval = $duk->eval($js);
     my $got_run = $duk->dispatch_function_in_event_loop('main');
     my $perl_ret = $duk->get('perl_ret');
-    is($perl_ret, 'EMPTY1357246', "timeouts dispatched correctly");
+    is($perl_ret, 'EMPTY1234567', "timeouts dispatched correctly");
 }
 
 sub main {
