@@ -16,6 +16,8 @@
 #include "duktape.h"
 #include "c_eventloop.h"
 
+#define  DUKTAPE_EVENTLOOP_DEBUG 0       /* set to 1 to debug with printf */
+
 #define  MAX_TIMERS             4096     /* this is quite excessive for embedded use, but good for testing */
 #define  MIN_DELAY              1.0
 #define  MIN_WAIT               1.0
