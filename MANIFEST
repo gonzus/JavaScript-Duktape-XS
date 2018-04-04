@@ -14,6 +14,8 @@ MANIFEST.SKIP
 Makefile.PL
 ppport.h
 README.md
-t/gonzo.t
-t/timeout.t
+t/00_basic.t
+t/01_timeout.t
+t/02_now.t
+t/03_eval_in_loop.t
 typemap
