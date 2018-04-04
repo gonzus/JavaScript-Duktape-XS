@@ -61,6 +61,8 @@ sub test_eval {
         [ "null"    => undef ],
         [ "print('Hello world from Javascript!');" => undef, 'Hello world from Javascript!' ],
         [ "print(2+3*4)" => undef, '14' ],
+        [ q<print('this is a string', {this: 'object'})> => undef, q<this is a string [object Object]> ],
+        [ q<print('this is a string', JSON.stringify({this: 'object'}))> => undef, q<this is a string {"this":"object"}> ],
         [ 'gonzo()' => 0, 'HOI []' ],
         [ 'gonzo(1)' => 1, 'HOI [1]' ],
         [ 'gonzo("a", "b")' => 2, 'HOI [a,b]' ],
