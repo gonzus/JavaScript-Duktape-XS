@@ -17,6 +17,15 @@
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
 /*
+ * This is our internal data structure.  For now it only contains a pointer to
+ * a duktape context.  We will add other stuff here.
+ */
+typedef struct Duk {
+    duk_context* ctx;
+    HV* stats;
+} Duk;
+
+/*
  * We use these two functions to convert back and forth between the Perl
  * representation of an object and the JS one.
  *
@@ -35,7 +44,7 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* ctx);
 /*
  * Native print callable from JS
  */
-static duk_ret_t native_print(duk_context *ctx)
+static duk_ret_t native_print(duk_context* ctx)
 {
     duk_push_lstring(ctx, " ", 1);
     duk_insert(ctx, 0);
@@ -44,10 +53,7 @@ static duk_ret_t native_print(duk_context *ctx)
     return 0; // no return value
 }
 
-/*
- * Get JS compatible 'now' timestamp (millisecs since 1970).
- */
-static duk_ret_t native_now(duk_context *ctx)
+static double now_ms(void)
 {
     struct timeval tv;
     double now = 0.0;
@@ -56,15 +62,33 @@ static duk_ret_t native_now(duk_context *ctx)
         now = (((double) tv.tv_sec)  * 1000.0 +
                ((double) tv.tv_usec) / 1000.0);
     }
-    duk_push_number(ctx, (duk_double_t) now);
+    return now;
+}
+
+/*
+ * Get JS compatible 'now' timestamp (millisecs since 1970).
+ */
+static duk_ret_t native_now_ms(duk_context* ctx)
+{
+    duk_push_number(ctx, (duk_double_t) now_ms());
     return 1; //  return value at top
+}
+
+static void register_stat(pTHX_ Duk* duk, const char* kstr, double elapsed)
+{
+    STRLEN klen = strlen(kstr);
+    SV* value = sv_2mortal(newSVnv(elapsed));
+    if (hv_store(duk->stats, kstr, klen, value, 0)) {
+        SvREFCNT_inc(value);
+        /* fprintf(stderr, "STAT %s => %f\n", kstr, elapsed); */
+    }
 }
 
 /*
  * This is a generic dispatcher that allows calling any Perl function from JS,
  * after it has been registered under a name in JS.
  */
-static duk_ret_t perl_caller(duk_context *ctx)
+static duk_ret_t perl_caller(duk_context* ctx)
 {
     duk_idx_t j = 0;
 
@@ -332,12 +356,12 @@ static int set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* 
 static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
 {
     UNUSED_ARG(sv);
-    duk_context* ctx = (duk_context*) mg->mg_ptr;
-    duk_destroy_heap(ctx);
+    Duk* duk = (Duk*) mg->mg_ptr;
+    duk_destroy_heap(duk->ctx);
     return 0;
 }
 
-static void duk_fatal_error_handler(void* data, const char *msg)
+static void duk_fatal_error_handler(void* data, const char* msg)
 {
     UNUSED_ARG(data);
     dTHX;
@@ -351,8 +375,8 @@ static int register_native_functions(pTHX_ duk_context* ctx)
         const char* name;
         duk_c_function func;
     } data[] = {
-        { "print"       , native_print },
-        { "timestamp_ms", native_now   },
+        { "print"       , native_print  },
+        { "timestamp_ms", native_now_ms },
     };
     int n = sizeof(data) / sizeof(data[0]);
     int j = 0;
@@ -401,20 +425,30 @@ PROTOTYPES: DISABLE
 
 #################################################################
 
-duk_context*
+Duk*
 new(char* CLASS, HV* opt = NULL)
   CODE:
     UNUSED_ARG(opt);
-    RETVAL = duk_create_heap(0, 0, 0, (void*) 0xdeadbeef, duk_fatal_error_handler);
-    if (!RETVAL) {
+    RETVAL = (Duk*) malloc(sizeof(Duk));
+    memset(RETVAL, 0, sizeof(Duk));
+    RETVAL->stats = newHV();
+    RETVAL->ctx = duk_create_heap(0, 0, 0, (void*) 0xdeadbeef, duk_fatal_error_handler);
+    if (!RETVAL->ctx) {
         croak("Could not create duk heap\n");
     }
-    register_native_functions(aTHX_ RETVAL);
+    register_native_functions(aTHX_ RETVAL->ctx);
+  OUTPUT: RETVAL
+
+HV*
+get_stats(Duk* duk)
+  CODE:
+    RETVAL = duk->stats;
   OUTPUT: RETVAL
 
 SV*
-get(duk_context* ctx, const char* name)
+get(Duk* duk, const char* name)
   CODE:
+    duk_context* ctx = duk->ctx;
     RETVAL = &PL_sv_undef; // return undef by default
     if (duk_get_global_string(ctx, name)) {
         RETVAL = duk_to_perl(aTHX_ ctx, -1);
@@ -423,26 +457,39 @@ get(duk_context* ctx, const char* name)
   OUTPUT: RETVAL
 
 int
-set(duk_context* ctx, const char* name, SV* value)
+set(Duk* duk, const char* name, SV* value)
   CODE:
+    duk_context* ctx = duk->ctx;
     RETVAL = set_global_or_property(aTHX_ ctx, name, value);
   OUTPUT: RETVAL
 
 SV*
-eval(duk_context* ctx, const char* js)
+eval(Duk* duk, const char* js)
   CODE:
+    double t0, t1;
+    duk_context* ctx = duk->ctx;
+
     duk_uint_t flags = 0;
     /* flags |= DUK_COMPILE_STRICT; */
+    t0 = now_ms();
     if (duk_pcompile_string(ctx, flags, js)) {
         croak("JS could not compile code: %s\n", duk_safe_to_string(ctx, -1));
     }
+    t1 = now_ms();
+    register_stat(aTHX_ duk, "compile", t1 - t0);
+
+    t0 = now_ms();
     duk_call(ctx, 0);
+    t1 = now_ms();
+    register_stat(aTHX_ duk, "run", t1 - t0);
+
     RETVAL = duk_to_perl(aTHX_ ctx, -1);
     duk_pop(ctx);
   OUTPUT: RETVAL
 
 SV*
-dispatch_function_in_event_loop(duk_context* ctx, const char* func)
+dispatch_function_in_event_loop(Duk* duk, const char* func)
   CODE:
+    duk_context* ctx = duk->ctx;
     RETVAL = newSViv(run_function_in_event_loop(ctx, func));
   OUTPUT: RETVAL
