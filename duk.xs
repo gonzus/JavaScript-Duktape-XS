@@ -431,9 +431,12 @@ set(duk_context* duk, const char* name, SV* value)
 SV*
 eval(duk_context* duk, const char* js)
   CODE:
-    if (duk_peval_string(duk, js)) {
-        croak("JS eval failed: %s\n", duk_safe_to_string(duk, -1));
+    duk_uint_t flags = 0;
+    /* flags |= DUK_COMPILE_STRICT; */
+    if (duk_pcompile_string(duk, flags, js)) {
+        croak("JS could not compile code: %s\n", duk_safe_to_string(duk, -1));
     }
+    duk_call(duk, 0);
     RETVAL = duk_to_perl(aTHX_ duk, -1);
     duk_pop(duk);
   OUTPUT: RETVAL
