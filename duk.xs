@@ -12,6 +12,7 @@
  */
 #include "duktape.h"
 #include "c_eventloop.h"
+#include "duk_console.h"
 
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
@@ -369,7 +370,7 @@ static void duk_fatal_error_handler(void* data, const char* msg)
     abort();
 }
 
-static int register_native_functions(pTHX_ duk_context* ctx)
+static int register_native_functions(duk_context* ctx)
 {
     static struct Data {
         const char* name;
@@ -386,12 +387,31 @@ static int register_native_functions(pTHX_ duk_context* ctx)
             croak("Could not register native function %s\n", data[j].name);
         }
     }
+    return n;
+}
+
+static Duk* create_duktape_object(pTHX)
+{
+    Duk* duk = (Duk*) malloc(sizeof(Duk));
+    memset(duk, 0, sizeof(Duk));
+
+    duk->stats = newHV();
+
+    duk->ctx = duk_create_heap(0, 0, 0, 0, duk_fatal_error_handler);
+    if (!duk->ctx) {
+        croak("Could not create duk heap\n");
+    }
+
+    register_native_functions(duk->ctx);
 
     // Register our event loop dispatcher, otherwise calls to
     // dispatch_function_in_event_loop will not work.
-    eventloop_register(ctx);
+    eventloop_register(duk->ctx);
 
-    return n;
+    // initialize console object
+    duk_console_init(duk->ctx, DUK_CONSOLE_PROXY_WRAPPER | DUK_CONSOLE_FLUSH);
+
+    return duk;
 }
 
 static int run_function_in_event_loop(duk_context* ctx, const char* func)
@@ -429,14 +449,7 @@ Duk*
 new(char* CLASS, HV* opt = NULL)
   CODE:
     UNUSED_ARG(opt);
-    RETVAL = (Duk*) malloc(sizeof(Duk));
-    memset(RETVAL, 0, sizeof(Duk));
-    RETVAL->stats = newHV();
-    RETVAL->ctx = duk_create_heap(0, 0, 0, (void*) 0xdeadbeef, duk_fatal_error_handler);
-    if (!RETVAL->ctx) {
-        croak("Could not create duk heap\n");
-    }
-    register_native_functions(aTHX_ RETVAL->ctx);
+    RETVAL = create_duktape_object(aTHX);
   OUTPUT: RETVAL
 
 HV*
