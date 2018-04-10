@@ -18,4 +18,5 @@ t/00_basic.t
 t/01_timeout.t
 t/02_now.t
 t/03_eval_in_loop.t
+t/05_stats.t
 typemap
