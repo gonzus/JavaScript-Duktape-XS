@@ -1,3 +1,7 @@
+0.000039    2018-04-12
+            * Add support for gathering and returning stats for JS compilation
+              and running (both time and memory usage).
+
 0.000038    2018-04-10
             * Add support for JS console.
 

@@ -6,7 +6,7 @@ use warnings;
 use XSLoader;
 use parent 'Exporter';
 
-our $VERSION = '0.000038';
+our $VERSION = '0.000039';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
@@ -26,11 +26,14 @@ engine
 
 =head1 VERSION
 
-Version 0.000038
+Version 0.000039
 
 =head1 SYNOPSIS
 
     my $duk = JavaScript::Duktape::XS->new();
+
+    my %options = ( gather_stats => 1);
+    my $duk = JavaScript::Duktape::XS->new(\%options);
 
     $duk->set('global_name', [1, 2, 3]);
     $duk->set('my.object.slot', { foo => [ 4, 5 ] });
