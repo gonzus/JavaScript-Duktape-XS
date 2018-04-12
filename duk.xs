@@ -54,14 +54,13 @@ static duk_ret_t native_print(duk_context* ctx)
     return 0; // no return value
 }
 
-static double now_ms(void)
+static double now_us(void)
 {
     struct timeval tv;
     double now = 0.0;
     int rc = gettimeofday(&tv, 0);
     if (rc == 0) {
-        now = (((double) tv.tv_sec)  * 1000.0 +
-               ((double) tv.tv_usec) / 1000.0);
+        now = 1000000.0 * tv.tv_sec + tv.tv_usec;
     }
     return now;
 }
@@ -71,7 +70,7 @@ static double now_ms(void)
  */
 static duk_ret_t native_now_ms(duk_context* ctx)
 {
-    duk_push_number(ctx, (duk_double_t) now_ms());
+    duk_push_number(ctx, (duk_double_t) (now_us() / 1000.0));
     return 1; //  return value at top
 }
 
