@@ -17,14 +17,24 @@
 #define UNUSED_ARG(x) (void) x
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
+#define DUK_OPT_NAME_GATHER_STATS "gather_stats"
+
+#define DUK_OPT_FLAG_GATHER_STATS 0x01
+
 /*
  * This is our internal data structure.  For now it only contains a pointer to
  * a duktape context.  We will add other stuff here.
  */
 typedef struct Duk {
     duk_context* ctx;
+    unsigned long flags;
     HV* stats;
 } Duk;
+
+typedef struct Stats {
+    double t0;
+    double t1;
+} Stats;
 
 /*
  * We use these two functions to convert back and forth between the Perl
@@ -74,13 +84,12 @@ static duk_ret_t native_now_ms(duk_context* ctx)
     return 1; //  return value at top
 }
 
-static void register_stat(pTHX_ Duk* duk, const char* kstr, double elapsed)
+static void register_stat(pTHX_ Duk* duk, const char* kstr, double value)
 {
     STRLEN klen = strlen(kstr);
-    SV* value = sv_2mortal(newSVnv(elapsed));
-    if (hv_store(duk->stats, kstr, klen, value, 0)) {
-        SvREFCNT_inc(value);
-        /* fprintf(stderr, "STAT %s => %f\n", kstr, elapsed); */
+    SV* pvalue = sv_2mortal(newSVnv(value));
+    if (hv_store(duk->stats, kstr, klen, pvalue, 0)) {
+        SvREFCNT_inc(pvalue);
     }
 }
 
@@ -389,7 +398,7 @@ static int register_native_functions(duk_context* ctx)
     return n;
 }
 
-static Duk* create_duktape_object(pTHX)
+static Duk* create_duktape_object(pTHX_ HV* opt)
 {
     Duk* duk = (Duk*) malloc(sizeof(Duk));
     memset(duk, 0, sizeof(Duk));
@@ -410,7 +419,51 @@ static Duk* create_duktape_object(pTHX)
     // initialize console object
     duk_console_init(duk->ctx, DUK_CONSOLE_PROXY_WRAPPER | DUK_CONSOLE_FLUSH);
 
+    if (!opt) {
+        return duk;
+    }
+
+    hv_iterinit(opt);
+    while (1) {
+        SV* value = 0;
+        I32 klen = 0;
+        char* kstr = 0;
+        HE* entry = hv_iternext(opt);
+        if (!entry) {
+            break; // no more hash keys
+        }
+        kstr = hv_iterkey(entry, &klen);
+        if (!kstr || klen < 0) {
+            continue; // invalid key
+        }
+        value = hv_iterval(opt, entry);
+        if (!value) {
+            continue; // invalid value
+        }
+        if (memcmp(kstr, DUK_OPT_NAME_GATHER_STATS, klen) == 0 && SvTRUE(value)) {
+            duk->flags |= DUK_OPT_FLAG_GATHER_STATS;
+            continue;
+        }
+    }
+
     return duk;
+}
+
+static void stats_start(pTHX_ Duk* duk, Stats* stats)
+{
+    if (!(duk->flags & DUK_OPT_FLAG_GATHER_STATS)) {
+        return;
+    }
+    stats->t0 = now_us();
+}
+
+static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
+{
+    if (!(duk->flags & DUK_OPT_FLAG_GATHER_STATS)) {
+        return;
+    }
+    stats->t1 = now_us();
+    register_stat(aTHX_ duk, name, stats->t1 - stats->t0);
 }
 
 static int run_function_in_event_loop(duk_context* ctx, const char* func)
@@ -448,7 +501,7 @@ Duk*
 new(char* CLASS, HV* opt = NULL)
   CODE:
     UNUSED_ARG(opt);
-    RETVAL = create_duktape_object(aTHX);
+    RETVAL = create_duktape_object(aTHX, opt);
   OUTPUT: RETVAL
 
 HV*
@@ -478,22 +531,21 @@ set(Duk* duk, const char* name, SV* value)
 SV*
 eval(Duk* duk, const char* js)
   CODE:
-    double t0, t1;
+    Stats stats;
     duk_context* ctx = duk->ctx;
 
     duk_uint_t flags = 0;
     /* flags |= DUK_COMPILE_STRICT; */
-    t0 = now_ms();
+
+    stats_start(aTHX_ duk, &stats);
     if (duk_pcompile_string(ctx, flags, js)) {
         croak("JS could not compile code: %s\n", duk_safe_to_string(ctx, -1));
     }
-    t1 = now_ms();
-    register_stat(aTHX_ duk, "compile", t1 - t0);
+    stats_stop(aTHX_ duk, &stats, "compile");
 
-    t0 = now_ms();
+    stats_start(aTHX_ duk, &stats);
     duk_call(ctx, 0);
-    t1 = now_ms();
-    register_stat(aTHX_ duk, "run", t1 - t0);
+    stats_stop(aTHX_ duk, &stats, "run");
 
     RETVAL = duk_to_perl(aTHX_ ctx, -1);
     duk_pop(ctx);
