@@ -1,3 +1,6 @@
+0.000041    2018-04-12
+            * Gather stats in all calls, not just eval.
+
 0.000040    2018-04-12
             * Send all console output to stderr by default.
 
