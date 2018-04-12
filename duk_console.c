@@ -16,6 +16,9 @@
 #include "duktape.h"
 #include "duk_console.h"
 
+/* set this to non-zero to send all console ouput to stderr */
+#define CONSOLE_USE_STDERR_ALWAYS 1
+
 /* XXX: Add some form of log level filtering. */
 
 /* XXX: For now logs everything to stdout, V8/Node.js logs debug/info level
@@ -32,6 +35,10 @@
 static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const char *error_name) {
 	duk_idx_t i, n;
 	duk_uint_t flags;
+
+#if defined(CONSOLE_USE_STDERR_ALWAYS) && CONSOLE_USE_STDERR_ALWAYS > 0
+    to_stderr = 1;
+#endif
 
 	flags = (duk_uint_t) duk_get_current_magic(ctx);
 
