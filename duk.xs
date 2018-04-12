@@ -15,6 +15,8 @@
 #include "duk_console.h"
 
 #define UNUSED_ARG(x) (void) x
+#define FILE_MEMORY_STATUS "/proc/self/statm"
+
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
 #define DUK_OPT_NAME_GATHER_STATS "gather_stats"
@@ -27,13 +29,14 @@
  */
 typedef struct Duk {
     duk_context* ctx;
+    int pagesize;
     unsigned long flags;
     HV* stats;
 } Duk;
 
 typedef struct Stats {
-    double t0;
-    double t1;
+    double t0, t1;
+    double m0, m1;
 } Stats;
 
 /*
@@ -64,6 +67,47 @@ static duk_ret_t native_print(duk_context* ctx)
     return 0; // no return value
 }
 
+static long total_pages(void)
+{
+    long pages = 0;
+
+    /*
+     * /proc/[pid]/statm
+     *        Provides information about memory usage, measured in pages.
+     *            size       total program size
+     *                       (same as VmSize in /proc/[pid]/status)
+     *            resident   resident set size
+     *                       (same as VmRSS in /proc/[pid]/status)
+     *            share      shared pages (from shared mappings)
+     *            text       text (code)
+     *            lib        library (unused in Linux 2.6)
+     *            data       data + stack
+     *            dirty      dirty pages (unused in Linux 2.6)
+     */
+    FILE* fp = 0;
+    do {
+        long size, resident, share, text, lib, data, dirty;
+        int nread;
+        fp = fopen(FILE_MEMORY_STATUS, "r");
+        if (!fp) {
+            /* silently ignore, Mac does not have this file */
+            break;
+        }
+        nread = fscanf(fp, "%ld %ld %ld %ld %ld %ld %ld",
+                       &size, &resident, &share, &text, &lib, &data, &dirty);
+        if (nread != 7) {
+            /* silently ignore, avoid noisy errors */
+            break;
+        }
+        pages = size;
+    } while (0);
+    if (fp) {
+        fclose(fp);
+        fp = 0;
+    }
+    return pages;
+}
+
 static double now_us(void)
 {
     struct timeval tv;
@@ -84,11 +128,29 @@ static duk_ret_t native_now_ms(duk_context* ctx)
     return 1; //  return value at top
 }
 
-static void register_stat(pTHX_ Duk* duk, const char* kstr, double value)
+static void register_stat(pTHX_ Duk* duk, const char* category, const char* name, double value)
 {
-    STRLEN klen = strlen(kstr);
+    STRLEN clen = strlen(category);
+    STRLEN nlen = strlen(name);
+    HV* data = 0;
+    SV** found = hv_fetch(duk->stats, category, clen, 0);
+    if (found) {
+        SV* ref = SvRV(*found);
+        /* value not a valid hashref? bail out */
+        if (SvTYPE(ref) != SVt_PVHV) {
+            return;
+        }
+        data = (HV*) ref;
+    } else {
+        data = newHV();
+        SV* ref = newRV_noinc((SV*) data);
+        if (hv_store(duk->stats, category, clen, ref, 0)) {
+            SvREFCNT_inc(ref);
+        }
+    }
+
     SV* pvalue = sv_2mortal(newSVnv(value));
-    if (hv_store(duk->stats, kstr, klen, pvalue, 0)) {
+    if (hv_store(data, name, nlen, pvalue, 0)) {
         SvREFCNT_inc(pvalue);
     }
 }
@@ -423,6 +485,8 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
         return duk;
     }
 
+    duk->pagesize = getpagesize();
+
     hv_iterinit(opt);
     while (1) {
         SV* value = 0;
@@ -455,6 +519,7 @@ static void stats_start(pTHX_ Duk* duk, Stats* stats)
         return;
     }
     stats->t0 = now_us();
+    stats->m0 = total_pages() * duk->pagesize;
 }
 
 static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
@@ -463,7 +528,10 @@ static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
         return;
     }
     stats->t1 = now_us();
-    register_stat(aTHX_ duk, name, stats->t1 - stats->t0);
+    stats->m1 = total_pages() * duk->pagesize;
+
+    register_stat(aTHX_ duk, name, "elapsed_us", stats->t1 - stats->t0);
+    register_stat(aTHX_ duk, name, "memory_bytes", stats->m1 - stats->m0);
 }
 
 static int run_function_in_event_loop(duk_context* ctx, const char* func)
