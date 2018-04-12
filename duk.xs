@@ -580,29 +580,41 @@ get_stats(Duk* duk)
 
 SV*
 get(Duk* duk, const char* name)
+  PREINIT:
+    duk_context* ctx = 0;
+    Stats stats;
   CODE:
-    duk_context* ctx = duk->ctx;
+    ctx = duk->ctx;
     RETVAL = &PL_sv_undef; // return undef by default
+    stats_start(aTHX_ duk, &stats);
     if (duk_get_global_string(ctx, name)) {
         RETVAL = duk_to_perl(aTHX_ ctx, -1);
         duk_pop(ctx);
     }
+    stats_stop(aTHX_ duk, &stats, "get");
   OUTPUT: RETVAL
 
 int
 set(Duk* duk, const char* name, SV* value)
+  PREINIT:
+    duk_context* ctx = 0;
+    Stats stats;
   CODE:
-    duk_context* ctx = duk->ctx;
+    ctx = duk->ctx;
+    stats_start(aTHX_ duk, &stats);
     RETVAL = set_global_or_property(aTHX_ ctx, name, value);
+    stats_stop(aTHX_ duk, &stats, "set");
   OUTPUT: RETVAL
 
 SV*
 eval(Duk* duk, const char* js)
-  CODE:
+  PREINIT:
+    duk_context* ctx = 0;
     Stats stats;
-    duk_context* ctx = duk->ctx;
-
     duk_uint_t flags = 0;
+  CODE:
+    ctx = duk->ctx;
+
     /* flags |= DUK_COMPILE_STRICT; */
 
     stats_start(aTHX_ duk, &stats);
@@ -621,7 +633,12 @@ eval(Duk* duk, const char* js)
 
 SV*
 dispatch_function_in_event_loop(Duk* duk, const char* func)
+  PREINIT:
+    duk_context* ctx = 0;
+    Stats stats;
   CODE:
-    duk_context* ctx = duk->ctx;
+    ctx = duk->ctx;
+    stats_start(aTHX_ duk, &stats);
     RETVAL = newSViv(run_function_in_event_loop(ctx, func));
+    stats_stop(aTHX_ duk, &stats, "dispatch");
   OUTPUT: RETVAL
