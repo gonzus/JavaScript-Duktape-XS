@@ -90,7 +90,7 @@ static long total_pages(void)
         int nread;
         fp = fopen(FILE_MEMORY_STATUS, "r");
         if (!fp) {
-            /* silently ignore, Mac does not have this file */
+            /* silently ignore, some OSs do not have this file */
             break;
         }
         nread = fscanf(fp, "%ld %ld %ld %ld %ld %ld %ld",
@@ -569,7 +569,7 @@ Duk*
 new(char* CLASS, HV* opt = NULL)
   CODE:
     UNUSED_ARG(opt);
-    RETVAL = create_duktape_object(aTHX, opt);
+    RETVAL = create_duktape_object(aTHX_ opt);
   OUTPUT: RETVAL
 
 HV*
