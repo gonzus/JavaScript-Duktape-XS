@@ -13,7 +13,10 @@ extern "C" {
 /* Flush output after every call. */
 #define DUK_CONSOLE_FLUSH          (1 << 1)
 
-extern void duk_console_init(duk_context *ctx, duk_uint_t flags);
+void duk_console_init(duk_context *ctx, duk_uint_t flags);
+
+/* Expose this so it is callable from C */
+int duk_c_console_log(int to_stderr, int do_flush, const char* fmt, ...);
 
 #if defined(__cplusplus)
 }

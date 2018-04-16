@@ -32,6 +32,20 @@
 
 /* XXX: Init console object using duk_def_prop() when that call is available. */
 
+int duk_c_console_log(int to_stderr, int do_flush, const char* fmt, ...)
+{
+    int ret = 0;
+    va_list ap;
+    va_start(ap, fmt);
+    PerlIO* fp = to_stderr ? PerlIO_stderr() : PerlIO_stdout();
+    ret = PerlIO_vprintf(fp, fmt, ap);
+    va_end(ap);
+	if (do_flush) {
+		PerlIO_flush(fp);
+	}
+    return ret;
+}
+
 static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const char *error_name) {
 	duk_idx_t i, n;
 	duk_uint_t flags;
@@ -71,11 +85,7 @@ static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const 
 		duk_get_prop_string(ctx, -1, "stack");
 	}
 
-    PerlIO* fp = to_stderr ? PerlIO_stderr() : PerlIO_stdout();
-    PerlIO_printf(fp, "%s\n", duk_to_string(ctx, -1));
-	if (flags & DUK_CONSOLE_FLUSH) {
-		PerlIO_flush(fp);
-	}
+    duk_c_console_log(to_stderr, flags & DUK_CONSOLE_FLUSH, "%s\n", duk_to_string(ctx, -1));
 	return 0;
 }
 
