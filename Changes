@@ -1,3 +1,7 @@
+0.000043    2018-04-16
+            * Bubble-up to the console any errors that happen in setTimeout.
+            * Fix pointers to github repo.
+
 0.000042    2018-04-13
             * Add test-time dependencies.
 
