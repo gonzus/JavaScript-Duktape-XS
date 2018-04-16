@@ -29,8 +29,8 @@ WriteMakefile(
         resources   => {
             repository => {
                 type => 'git',
-                url  => 'git@github.com:gonzus/NONE',
-                web  => 'https://github.com/gonzus/NONE',
+                url  => 'git@github.com:gonzus/JavaScript-Duktape-XS',
+                web  => 'https://github.com/gonzus/JavaScript-Duktape-XS',
             },
         },
     },
