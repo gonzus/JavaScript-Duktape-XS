@@ -22,4 +22,5 @@ t/02_now.t
 t/03_eval_in_loop.t
 t/04_console.t
 t/05_stats.t
+t/06_stacktrace.t
 typemap

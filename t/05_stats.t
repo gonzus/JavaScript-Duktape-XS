@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Time::HiRes;
 use Test::More;
 use JavaScript::Duktape::XS;
 
