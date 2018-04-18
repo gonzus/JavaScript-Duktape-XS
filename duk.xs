@@ -196,7 +196,7 @@ static SV* duk_to_perl(pTHX_ duk_context* ctx, int pos)
                     SV* nested = sv_2mortal(duk_to_perl(aTHX_ ctx, -1));
                     duk_pop(ctx); // value in current pos
                     if (!nested) {
-                        croak("Could not create Perl SV for array");
+                        croak("Could not create Perl SV for array\n");
                     }
                     if (av_store(values, j, nested)) {
                         SvREFCNT_inc(nested);
@@ -212,7 +212,7 @@ static SV* duk_to_perl(pTHX_ duk_context* ctx, int pos)
                     SV* nested = sv_2mortal(duk_to_perl(aTHX_ ctx, -1));
                     duk_pop_2(ctx); // key and value
                     if (!nested) {
-                        croak("Could not create Perl SV for hash");
+                        croak("Could not create Perl SV for hash\n");
                     }
                     if (hv_store(values, kstr, klen, nested, 0)) {
                         SvREFCNT_inc(nested);
@@ -273,10 +273,10 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* ctx)
                     break; // could not get element
                 }
                 if (!perl_to_duk(aTHX_ *elem, ctx)) {
-                    croak("Could not create JS element for array");
+                    croak("Could not create JS element for array\n");
                 }
                 if (!duk_put_prop_index(ctx, array_pos, count)) {
-                    croak("Could not push JS element for array");
+                    croak("Could not push JS element for array\n");
                 }
                 ++count;
             }
@@ -301,10 +301,10 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* ctx)
                     continue; // invalid value
                 }
                 if (!perl_to_duk(aTHX_ value, ctx)) {
-                    croak("Could not create JS element for hash");
+                    croak("Could not create JS element for hash\n");
                 }
                 if (! duk_put_prop_lstring(ctx, hash_pos, kstr, klen)) {
-                    croak("Could not push JS element for hash");
+                    croak("Could not push JS element for hash\n");
                 }
             }
         } else if (SvTYPE(ref) == SVt_PVCV) {
@@ -313,11 +313,11 @@ static int perl_to_duk(pTHX_ SV* value, duk_context* ctx)
             duk_push_c_function(ctx, perl_caller, DUK_VARARGS);
             SV* func = newSVsv(value);
             if (!func) {
-                croak("Could not create copy of Perl callback");
+                croak("Could not create copy of Perl callback\n");
             }
             duk_push_pointer(ctx, func);
             if (! duk_put_prop_lstring(ctx, -2, DUK_SLOT_CALLBACK, sizeof(DUK_SLOT_CALLBACK) - 1)) {
-                croak("Could not associate C dispatcher and Perl callback");
+                croak("Could not associate C dispatcher and Perl callback\n");
             }
         } else {
             croak("Don't know how to deal with an undetermined Perl reference\n");
