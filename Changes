@@ -1,3 +1,8 @@
+0.000045    2018-04-18
+            * Change console implementation to allow registering a handler to
+              log the messages.
+            * Add option to grab console messages and stash them.
+
 0.000044    2018-04-17
             * Add an optional parameter to eval, to specify a JS file name for
               stack traces

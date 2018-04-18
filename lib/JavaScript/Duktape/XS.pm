@@ -6,7 +6,7 @@ use warnings;
 use XSLoader;
 use parent 'Exporter';
 
-our $VERSION = '0.000044';
+our $VERSION = '0.000045';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
@@ -26,7 +26,7 @@ engine
 
 =head1 VERSION
 
-Version 0.000044
+Version 0.000045
 
 =head1 SYNOPSIS
 
@@ -47,6 +47,8 @@ Version 0.000044
 
     my $stats = $duk->get_stats(); # returns a hashref
 
+    my $msgs = $duk->get_msgs(); # returns a hashref
+
 =head1 DESCRIPTION
 
 This module provides an XS wrapper to call Duktape from Perl.
@@ -64,6 +66,8 @@ This module provides an XS wrapper to call Duktape from Perl.
 =head2 dispatch_function_in_event_loop
 
 =head2 get_stats
+
+=head2 get_msgs
 
 =head1 SEE ALSO
 
