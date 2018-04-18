@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <poll.h>
 
+#include "util.h"
 #include "duktape.h"
 #include "c_eventloop.h"
 #include "duk_console.h"
@@ -62,19 +63,6 @@ static int exit_requested = 0;
 #if defined(DUKTAPE_EVENTLOOP_DEBUG) && DUKTAPE_EVENTLOOP_DEBUG > 0
 static int duktape_debug(const char* fmt, ...);
 #endif
-
-/* Get Javascript compatible 'now' timestamp (millisecs since 1970). */
-static double get_now(void) {
-    struct timeval tv;
-    int rc;
-
-    rc = gettimeofday(&tv, NULL);
-    if (rc != 0) {
-        /* Should never happen, so return whatever. */
-        return 0.0;
-    }
-    return ((double) tv.tv_sec) * 1000.0 + ((double) tv.tv_usec) / 1000.0;
-}
 
 static ev_timer *find_nearest_timer(void) {
     /* Last timer expires first (list is always kept sorted). */
@@ -126,7 +114,7 @@ static void expire_timers(duk_context *ctx) {
 
     /* [ ... stash eventTimers ] */
 
-    now = get_now();
+    now = now_us() / 1000.0;
     while (sanity-- > 0) {
         /*
          *  If exit has been requested, exit without running further
@@ -309,7 +297,7 @@ duk_ret_t eventloop_run(duk_context *ctx, void *udata) {
          *  the wait is relative).
          */
 
-        now = get_now();
+        now = now_us() / 1000.0;
         t = find_nearest_timer();
         if (t) {
             diff = t->target - now;
@@ -406,7 +394,7 @@ static int create_timer(duk_context *ctx) {
     double now;
     ev_timer *t;
 
-    now = get_now();
+    now = now_us() / 1000.0;
 
     /* indexes:
      *   0 = function (callback)
@@ -619,7 +607,7 @@ static int duktape_debug(const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    double now = get_now();
+    double now = now_us() / 1000.0;
     fprintf(stderr, "%.3f ", now);
     int n = vfprintf(stderr, fmt, ap);
     fflush(stderr);

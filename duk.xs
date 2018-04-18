@@ -15,9 +15,6 @@
 #include "c_eventloop.h"
 #include "duk_console.h"
 
-#define UNUSED_ARG(x) (void) x
-#define FILE_MEMORY_STATUS "/proc/self/statm"
-
 #define DUK_SLOT_CALLBACK "_perl_.callback"
 
 #define DUK_OPT_NAME_GATHER_STATS "gather_stats"
@@ -66,58 +63,6 @@ static duk_ret_t native_print(duk_context* ctx)
     duk_join(ctx, duk_get_top(ctx) - 1);
     PerlIO_stdoutf("%s\n", duk_safe_to_string(ctx, -1));
     return 0; // no return value
-}
-
-static long total_pages(void)
-{
-    long pages = 0;
-
-    /*
-     * /proc/[pid]/statm
-     *        Provides information about memory usage, measured in pages.
-     *            size       total program size
-     *                       (same as VmSize in /proc/[pid]/status)
-     *            resident   resident set size
-     *                       (same as VmRSS in /proc/[pid]/status)
-     *            share      shared pages (from shared mappings)
-     *            text       text (code)
-     *            lib        library (unused in Linux 2.6)
-     *            data       data + stack
-     *            dirty      dirty pages (unused in Linux 2.6)
-     */
-    FILE* fp = 0;
-    do {
-        long size, resident, share, text, lib, data, dirty;
-        int nread;
-        fp = fopen(FILE_MEMORY_STATUS, "r");
-        if (!fp) {
-            /* silently ignore, some OSs do not have this file */
-            break;
-        }
-        nread = fscanf(fp, "%ld %ld %ld %ld %ld %ld %ld",
-                       &size, &resident, &share, &text, &lib, &data, &dirty);
-        if (nread != 7) {
-            /* silently ignore, avoid noisy errors */
-            break;
-        }
-        pages = size;
-    } while (0);
-    if (fp) {
-        fclose(fp);
-        fp = 0;
-    }
-    return pages;
-}
-
-static double now_us(void)
-{
-    struct timeval tv;
-    double now = 0.0;
-    int rc = gettimeofday(&tv, 0);
-    if (rc == 0) {
-        now = 1000000.0 * tv.tv_sec + tv.tv_usec;
-    }
-    return now;
 }
 
 /*
@@ -466,6 +411,7 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
     Duk* duk = (Duk*) malloc(sizeof(Duk));
     memset(duk, 0, sizeof(Duk));
 
+    duk->pagesize = getpagesize();
     duk->stats = newHV();
 
     duk->ctx = duk_create_heap(0, 0, 0, 0, duk_fatal_error_handler);
@@ -487,7 +433,6 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
         return duk;
     }
 
-    duk->pagesize = getpagesize();
 
     hv_iterinit(opt);
     while (1) {
@@ -521,7 +466,7 @@ static void stats_start(pTHX_ Duk* duk, Stats* stats)
         return;
     }
     stats->t0 = now_us();
-    stats->m0 = total_pages() * duk->pagesize;
+    stats->m0 = total_memory_pages() * duk->pagesize;
 }
 
 static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
@@ -530,7 +475,7 @@ static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
         return;
     }
     stats->t1 = now_us();
-    stats->m1 = total_pages() * duk->pagesize;
+    stats->m1 = total_memory_pages() * duk->pagesize;
 
     register_stat(aTHX_ duk, name, "elapsed_us", stats->t1 - stats->t0);
     register_stat(aTHX_ duk, name, "memory_bytes", stats->m1 - stats->m0);
