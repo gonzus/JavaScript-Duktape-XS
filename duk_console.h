@@ -7,16 +7,22 @@
 extern "C" {
 #endif
 
-/* Use a proxy wrapper to make undefined methods (console.foo()) no-ops. */
-#define DUK_CONSOLE_PROXY_WRAPPER  (1 << 0)
+/* console options */
+#define DUK_CONSOLE_PROXY_WRAPPER  (1 << 0) /* Use proxy wrapper for no-ops */
+#define DUK_CONSOLE_FLUSH          (1 << 1) /* Flush output after every call. */
+#define DUK_CONSOLE_TO_STDERR      (1 << 2) /* Always output to stderr. */
 
-/* Flush output after every call. */
-#define DUK_CONSOLE_FLUSH          (1 << 1)
+/* The console handler prototype */
+typedef int (ConsoleHandler)(duk_uint_t flags, void* data, const char* fmt, ...);
 
+/* Initialize the console system */
 void duk_console_init(duk_context *ctx, duk_uint_t flags);
 
-/* Expose this so it is callable from C */
-int duk_c_console_log(int to_stderr, int do_flush, const char* fmt, ...);
+/* Register a console handler */
+void duk_console_register_handler(ConsoleHandler* handler, void* data);
+
+/* A basic console handler that does print out messages */
+int duk_console_log(duk_uint_t flags, void* data, const char* fmt, ...);
 
 #if defined(__cplusplus)
 }

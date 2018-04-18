@@ -10,6 +10,7 @@
  *
  * http://duktape.org/index.html
  */
+#include "util.h"
 #include "duktape.h"
 #include "c_eventloop.h"
 #include "duk_console.h"
@@ -473,6 +474,7 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
     }
 
     register_native_functions(duk->ctx);
+    duk_console_register_handler(duk_console_log, duk);
 
     // Register our event loop dispatcher, otherwise calls to
     // dispatch_function_in_event_loop will not work.
@@ -642,11 +644,13 @@ eval(Duk* duk, const char* js, const char* file = 0)
              * access in a duk_safe_call() if it matters.
              */
             duk_get_prop_string(ctx, -1, "stack");
-            duk_c_console_log(1, 1, "error: %s\n", duk_safe_to_string(ctx, -1));
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, duk,
+                            "error: %s\n", duk_safe_to_string(ctx, -1));
             duk_pop(ctx);
         } else {
             /* Non-Error value, coerce safely to string. */
-            duk_c_console_log(1, 1, "error: %s\n", duk_safe_to_string(ctx, -1));
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, duk,
+                            "error: %s\n", duk_safe_to_string(ctx, -1));
         }
     }
 

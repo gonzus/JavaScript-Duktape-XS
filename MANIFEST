@@ -9,6 +9,7 @@ c_eventloop.h
 c_eventloop.js
 duk_console.c
 duk_console.h
+util.h
 lib/JavaScript/Duktape/XS.pm
 LICENSE
 MANIFEST

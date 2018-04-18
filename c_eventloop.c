@@ -187,8 +187,9 @@ static void expire_timers(duk_context *ctx) {
 #if defined(DUKTAPE_EVENTLOOP_DEBUG) && DUKTAPE_EVENTLOOP_DEBUG > 0
             duktape_debug("timer callback failed for timer %d: %s\n", (int) t->id, duk_to_string(ctx, -1));
 #endif
-            duk_c_console_log(1, 1, "%s (while running callback id %d)\n",
-                              duk_safe_to_string(ctx, -1), (int) t->id);
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, 0,
+                            "%s (while running callback id %d)\n",
+                            duk_safe_to_string(ctx, -1), (int) t->id);
         }
         duk_pop(ctx);    /* ignore errors for now -> [ ... stash eventTimers ] */
 
@@ -380,8 +381,9 @@ duk_ret_t eventloop_run(duk_context *ctx, void *udata) {
 #if defined(DUKTAPE_EVENTLOOP_DEBUG) && DUKTAPE_EVENTLOOP_DEBUG > 0
                     duktape_debug("fd callback failed for fd %d: %s\n", (int) pfd->fd, duk_to_string(ctx, -1));
 #endif
-                    duk_c_console_log(1, 1, "%s (while running callback id %d on fd %d)\n",
-                                      duk_safe_to_string(ctx, -1), (int) t->id, (int) pfd->fd);
+                    duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, 0,
+                                    "%s (while running callback id %d on fd %d)\n",
+                                    duk_safe_to_string(ctx, -1), (int) t->id, (int) pfd->fd);
                 }
                 duk_pop(ctx);
 

@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include "util.h"
 #include "duktape.h"
 #include "duk_console.h"
 
@@ -32,18 +33,33 @@
 
 /* XXX: Init console object using duk_def_prop() when that call is available. */
 
-int duk_c_console_log(int to_stderr, int do_flush, const char* fmt, ...)
+typedef struct ConsoleConfig {
+    ConsoleHandler* handler;
+    void* data;
+} ConsoleConfig;
+
+static ConsoleConfig console_config;
+
+int duk_console_log(duk_uint_t flags, void* data, const char* fmt, ...)
 {
+    UNUSED_ARG(data);
+
     int ret = 0;
     va_list ap;
     va_start(ap, fmt);
-    PerlIO* fp = to_stderr ? PerlIO_stderr() : PerlIO_stdout();
+    PerlIO* fp = (flags & DUK_CONSOLE_TO_STDERR) ? PerlIO_stderr() : PerlIO_stdout();
     ret = PerlIO_vprintf(fp, fmt, ap);
     va_end(ap);
-	if (do_flush) {
-		PerlIO_flush(fp);
-	}
+    if (flags & DUK_CONSOLE_FLUSH) {
+        PerlIO_flush(fp);
+    }
     return ret;
+}
+
+void duk_console_register_handler(ConsoleHandler* handler, void* data)
+{
+    console_config.handler = handler;
+    console_config.data = data;
 }
 
 static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const char *error_name) {
@@ -55,6 +71,9 @@ static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const 
 #endif
 
 	flags = (duk_uint_t) duk_get_current_magic(ctx);
+    if (to_stderr) {
+        flags |= DUK_CONSOLE_TO_STDERR;
+    }
 
 	n = duk_get_top(ctx);
 
@@ -85,7 +104,10 @@ static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const 
 		duk_get_prop_string(ctx, -1, "stack");
 	}
 
-    duk_c_console_log(to_stderr, flags & DUK_CONSOLE_FLUSH, "%s\n", duk_to_string(ctx, -1));
+    if (console_config.handler) {
+        console_config.handler(flags, console_config.data,
+                               "%s\n", duk_to_string(ctx, -1));
+    }
 	return 0;
 }
 
