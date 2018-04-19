@@ -12,7 +12,6 @@
 /* #include "ppport.h" */
 
 #include <stdio.h>
-#include <stdarg.h>
 #include "util.h"
 #include "duktape.h"
 #include "duk_console.h"
@@ -40,18 +39,14 @@ typedef struct ConsoleConfig {
 
 static ConsoleConfig console_config;
 
-int duk_console_log(duk_uint_t flags, void* data, const char* fmt, ...)
+int duk_console_log(duk_uint_t flags, const char* fmt, ...)
 {
-    UNUSED_ARG(data);
-
     int ret = 0;
-    va_list ap;
-    va_start(ap, fmt);
-    PerlIO* fp = (flags & DUK_CONSOLE_TO_STDERR) ? PerlIO_stderr() : PerlIO_stdout();
-    ret = PerlIO_vprintf(fp, fmt, ap);
-    va_end(ap);
-    if (flags & DUK_CONSOLE_FLUSH) {
-        PerlIO_flush(fp);
+    if (console_config.handler) {
+        va_list ap;
+        va_start(ap, fmt);
+        ret = console_config.handler(flags, console_config.data, fmt, ap);
+        va_end(ap);
     }
     return ret;
 }
@@ -104,10 +99,7 @@ static duk_ret_t duk__console_log_helper(duk_context *ctx, int to_stderr, const 
 		duk_get_prop_string(ctx, -1, "stack");
 	}
 
-    if (console_config.handler) {
-        console_config.handler(flags, console_config.data,
-                               "%s\n", duk_to_string(ctx, -1));
-    }
+    duk_console_log(flags, "%s\n", duk_to_string(ctx, -1));
 	return 0;
 }
 

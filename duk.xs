@@ -77,7 +77,7 @@ static duk_ret_t native_now_ms(duk_context* ctx)
     return 1; //  return value at top
 }
 
-static void register_stat(pTHX_ Duk* duk, const char* category, const char* name, double value)
+static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, double value)
 {
     STRLEN clen = strlen(category);
     STRLEN nlen = strlen(name);
@@ -104,7 +104,7 @@ static void register_stat(pTHX_ Duk* duk, const char* category, const char* name
     }
 }
 
-static void register_msg(pTHX_ Duk* duk, const char* target, const char* message)
+static void save_msg(pTHX_ Duk* duk, const char* target, const char* message)
 {
     STRLEN tlen = strlen(target);
     STRLEN mlen = strlen(message);
@@ -442,22 +442,31 @@ static int register_native_functions(Duk* duk)
     }
     return n;
 }
-
-static int grab_console_messages(duk_uint_t flags, void* data, const char* fmt, ...)
+static int print_console_messages(duk_uint_t flags, void* data,
+                                  const char* fmt, va_list ap)
 {
-    UNUSED_ARG(flags);
-    UNUSED_ARG(fmt);
+    dTHX;
+
+    UNUSED_ARG(data);
+    PerlIO* fp = (flags & DUK_CONSOLE_TO_STDERR) ? PerlIO_stderr() : PerlIO_stdout();
+    int ret = PerlIO_vprintf(fp, fmt, ap);
+    if (flags & DUK_CONSOLE_FLUSH) {
+        PerlIO_flush(fp);
+    }
+    return ret;
+}
+
+
+static int save_console_messages(duk_uint_t flags, void* data,
+                                 const char* fmt, va_list ap)
+{
     dTHX;
     Duk* duk = (Duk*) data;
-
-    va_list ap;
     char message[1024];
-    va_start(ap, fmt);
     int ret = vsprintf(message, fmt, ap);
-    va_end(ap);
     const char* target = (flags & DUK_CONSOLE_TO_STDERR) ? "stderr" : "stdout";
-    /* fprintf(stderr, "CONSOLE SAYS [%s]\n", message); */
-    register_msg(aTHX_ duk, target, message);
+
+    save_msg(aTHX_ duk, target, message);
     return ret;
 }
 
@@ -515,10 +524,10 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
     }
 
     if (duk->flags & DUK_OPT_FLAG_SAVE_MESSAGES) {
-        duk_console_register_handler(grab_console_messages, duk);
+        duk_console_register_handler(save_console_messages, duk);
     }
     else {
-        duk_console_register_handler(duk_console_log, duk);
+        duk_console_register_handler(print_console_messages, duk);
     }
 
     return duk;
@@ -541,8 +550,8 @@ static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
     stats->t1 = now_us();
     stats->m1 = total_memory_pages() * duk->pagesize;
 
-    register_stat(aTHX_ duk, name, "elapsed_us", stats->t1 - stats->t0);
-    register_stat(aTHX_ duk, name, "memory_bytes", stats->m1 - stats->m0);
+    save_stat(aTHX_ duk, name, "elapsed_us", stats->t1 - stats->t0);
+    save_stat(aTHX_ duk, name, "memory_bytes", stats->m1 - stats->m0);
 }
 
 static int run_function_in_event_loop(Duk* duk, const char* func)
@@ -661,12 +670,12 @@ eval(Duk* duk, const char* js, const char* file = 0)
              * access in a duk_safe_call() if it matters.
              */
             duk_get_prop_string(ctx, -1, "stack");
-            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, duk,
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
                             "error: %s\n", duk_safe_to_string(ctx, -1));
             duk_pop(ctx);
         } else {
             /* Non-Error value, coerce safely to string. */
-            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, duk,
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
                             "error: %s\n", duk_safe_to_string(ctx, -1));
         }
     }

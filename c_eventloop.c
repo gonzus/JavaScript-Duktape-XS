@@ -98,7 +98,7 @@ static void bubble_last_timer(void) {
     }
 }
 
-static void expire_timers(duk_context *ctx, void* udata) {
+static void expire_timers(duk_context *ctx) {
     ev_timer *t;
     int sanity = MAX_EXPIRYS;
     double now;
@@ -175,7 +175,7 @@ static void expire_timers(duk_context *ctx, void* udata) {
 #if defined(DUKTAPE_EVENTLOOP_DEBUG) && DUKTAPE_EVENTLOOP_DEBUG > 0
             duktape_debug("timer callback failed for timer %d: %s\n", (int) t->id, duk_to_string(ctx, -1));
 #endif
-            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, udata,
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
                             "%s (while running callback id %d)\n",
                             duk_safe_to_string(ctx, -1), (int) t->id);
         }
@@ -257,6 +257,8 @@ duk_ret_t eventloop_run(duk_context *ctx, void *udata) {
     int idx_eventloop;
     int idx_fd_handler;
 
+    (void) udata;
+
     /* The Ecmascript poll handler is passed through EventLoop.fdPollHandler
      * which c_eventloop.js sets before we come here.
      */
@@ -271,7 +273,7 @@ duk_ret_t eventloop_run(duk_context *ctx, void *udata) {
          *  Expire timers.
          */
 
-        expire_timers(ctx, udata);
+        expire_timers(ctx);
 
         /*
          *  If exit requested, bail out as fast as possible.
@@ -367,7 +369,7 @@ duk_ret_t eventloop_run(duk_context *ctx, void *udata) {
 #if defined(DUKTAPE_EVENTLOOP_DEBUG) && DUKTAPE_EVENTLOOP_DEBUG > 0
                     duktape_debug("fd callback failed for fd %d: %s\n", (int) pfd->fd, duk_to_string(ctx, -1));
 #endif
-                    duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR, udata,
+                    duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
                                     "%s (while running callback id %d on fd %d)\n",
                                     duk_safe_to_string(ctx, -1), (int) t->id, (int) pfd->fd);
                 }

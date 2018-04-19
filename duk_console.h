@@ -1,6 +1,7 @@
 #if !defined(DUK_CONSOLE_H_INCLUDED)
 #define DUK_CONSOLE_H_INCLUDED
 
+#include <stdarg.h>
 #include "duktape.h"
 
 #if defined(__cplusplus)
@@ -13,7 +14,8 @@ extern "C" {
 #define DUK_CONSOLE_TO_STDERR      (1 << 2) /* Always output to stderr. */
 
 /* The console handler prototype */
-typedef int (ConsoleHandler)(duk_uint_t flags, void* data, const char* fmt, ...);
+typedef int (ConsoleHandler)(duk_uint_t flags, void* data,
+                             const char* fmt, va_list ap);
 
 /* Initialize the console system */
 void duk_console_init(duk_context *ctx, duk_uint_t flags);
@@ -21,8 +23,8 @@ void duk_console_init(duk_context *ctx, duk_uint_t flags);
 /* Register a console handler */
 void duk_console_register_handler(ConsoleHandler* handler, void* data);
 
-/* A basic console handler that does print out messages */
-int duk_console_log(duk_uint_t flags, void* data, const char* fmt, ...);
+/* Public function to log messages, callable from C */
+int duk_console_log(duk_uint_t flags, const char* fmt, ...);
 
 #if defined(__cplusplus)
 }
