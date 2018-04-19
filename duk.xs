@@ -104,10 +104,9 @@ static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, do
     }
 }
 
-static void save_msg(pTHX_ Duk* duk, const char* target, const char* message)
+static void save_msg(pTHX_ Duk* duk, const char* target, SV* message)
 {
     STRLEN tlen = strlen(target);
-    STRLEN mlen = strlen(message);
     AV* data = 0;
     int top = 0;
     SV** found = hv_fetch(duk->msgs, target, tlen, 0);
@@ -128,7 +127,7 @@ static void save_msg(pTHX_ Duk* duk, const char* target, const char* message)
         top = -1;
     }
 
-    SV* pvalue = sv_2mortal(newSVpvn(message, mlen));
+    SV* pvalue = sv_2mortal(message);
     if (av_store(data, ++top, pvalue)) {
         SvREFCNT_inc(pvalue);
     }
@@ -462,12 +461,14 @@ static int save_console_messages(duk_uint_t flags, void* data,
 {
     dTHX;
     Duk* duk = (Duk*) data;
-    char message[1024];
-    int ret = vsprintf(message, fmt, ap);
     const char* target = (flags & DUK_CONSOLE_TO_STDERR) ? "stderr" : "stdout";
-
+    SV* message = newSVpvs("");
+    va_list args_copy;
+    va_copy(args_copy, ap);
+    Perl_sv_vcatpvf(aTHX_ message, fmt, &args_copy);
     save_msg(aTHX_ duk, target, message);
-    return ret;
+    return SvCUR(message);
+
 }
 
 static Duk* create_duktape_object(pTHX_ HV* opt)

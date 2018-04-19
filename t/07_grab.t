@@ -37,8 +37,8 @@ sub test_capture {
         }
         if ($save) {
             my $msgs = $duk->get_msgs();
-            @got_out = map +( trim $_ ), @{ $msgs->{stdout} };
-            @got_err = @{ $msgs->{stderr} };
+            @got_out = map +( trim $_ ), @{ $msgs->{stdout} } if exists $msgs->{stdout};
+            @got_err = @{ $msgs->{stderr} } if exists $msgs->{stderr};
             # printf STDERR ("MESSAGES [%s] [%s]\n", join(',', @got_out), join(',', @got_err));
         }
 
