@@ -1,3 +1,6 @@
+0.000046    2018-04-19
+            * Clean up implementation of console handlers.
+
 0.000045    2018-04-18
             * Change console implementation to allow registering a handler to
               log the messages.
