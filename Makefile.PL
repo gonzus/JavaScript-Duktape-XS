@@ -16,6 +16,7 @@ WriteMakefile(
         'Test::More'   => 0,
         'Test::Output' => 0,
         'Time::HiRes'  => 0,
+        'Text::Trim'   => 0,
     },
     AUTHOR         => [
         'Gonzalo Diethelm (gonzus@cpan.org)',

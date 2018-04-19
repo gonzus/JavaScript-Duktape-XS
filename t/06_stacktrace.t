@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Time::HiRes;
 use Test::More;
 use Test::Output qw/ stderr_from /;
 use JavaScript::Duktape::XS;
