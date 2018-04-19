@@ -664,22 +664,7 @@ eval(Duk* duk, const char* js, const char* file = 0)
     stats_start(aTHX_ duk, &stats);
     rc = duk_pcall(ctx, 0);
     stats_stop(aTHX_ duk, &stats, "run");
-
-    if (rc != DUK_EXEC_SUCCESS) {
-        if (duk_is_error(ctx, -1)) {
-            /* Accessing .stack might cause an error to be thrown, so wrap this
-             * access in a duk_safe_call() if it matters.
-             */
-            duk_get_prop_string(ctx, -1, "stack");
-            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
-                            "error: %s\n", duk_safe_to_string(ctx, -1));
-            duk_pop(ctx);
-        } else {
-            /* Non-Error value, coerce safely to string. */
-            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
-                            "error: %s\n", duk_safe_to_string(ctx, -1));
-        }
-    }
+    check_duktape_call_for_errors(rc, ctx);
 
     RETVAL = duk_to_perl(aTHX_ ctx, -1);
     duk_pop(ctx);
