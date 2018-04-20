@@ -22,10 +22,11 @@
 #define  DUKTAPE_EVENTLOOP_DEBUG 0       /* set to 1 to debug with printf */
 
 #define  MAX_TIMERS             4096     /* this is quite excessive for embedded use, but good for testing */
+#define  TIMERS_SLOT_NAME       "eventTimers"
 #define  MIN_DELAY              1.0
 #define  MIN_WAIT               1.0
 #define  MAX_WAIT               60000.0
-#define  MAX_EXPIRYS            10
+#define  MAX_EXPIRIES           10
 
 #define  MAX_FDS                256
 
@@ -100,7 +101,7 @@ static void bubble_last_timer(void) {
 
 static void expire_timers(duk_context *ctx) {
     ev_timer *t;
-    int sanity = MAX_EXPIRYS;
+    int sanity = MAX_EXPIRIES;
     double now;
     int rc;
 
@@ -110,7 +111,7 @@ static void expire_timers(duk_context *ctx) {
      */
 
     duk_push_global_stash(ctx);
-    duk_get_prop_string(ctx, -1, "eventTimers");
+    duk_get_prop_string(ctx, -1, TIMERS_SLOT_NAME);
 
     /* [ ... stash eventTimers ] */
 
@@ -417,7 +418,7 @@ static int create_timer(duk_context *ctx) {
     /* Finally, register the callback to the global stash 'eventTimers' object. */
 
     duk_push_global_stash(ctx);
-    duk_get_prop_string(ctx, -1, "eventTimers");  /* -> [ func delay oneshot stash eventTimers ] */
+    duk_get_prop_string(ctx, -1, TIMERS_SLOT_NAME);  /* -> [ func delay oneshot stash eventTimers ] */
     duk_push_number(ctx, (double) timer_id);
     duk_dup(ctx, 0);
     duk_put_prop(ctx, -3);  /* eventTimers[timer_id] = callback */
@@ -488,7 +489,7 @@ static int delete_timer(duk_context *ctx) {
              */
 
             duk_push_global_stash(ctx);
-            duk_get_prop_string(ctx, -1, "eventTimers");  /* -> [ timer_id stash eventTimers ] */
+            duk_get_prop_string(ctx, -1, TIMERS_SLOT_NAME);  /* -> [ timer_id stash eventTimers ] */
             duk_push_number(ctx, (double) timer_id);
             duk_del_prop(ctx, -2);  /* delete eventTimers[timer_id] */
 
@@ -584,7 +585,7 @@ void eventloop_register(duk_context *ctx) {
     /* Initialize global stash 'eventTimers'. */
     duk_push_global_stash(ctx);
     duk_push_object(ctx);
-    duk_put_prop_string(ctx, -2, "eventTimers");
+    duk_put_prop_string(ctx, -2, TIMERS_SLOT_NAME);
     duk_pop(ctx);
 }
 
