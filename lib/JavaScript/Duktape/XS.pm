@@ -6,7 +6,7 @@ use warnings;
 use XSLoader;
 use parent 'Exporter';
 
-our $VERSION = '0.000048';
+our $VERSION = '0.000049';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
@@ -26,7 +26,7 @@ engine
 
 =head1 VERSION
 
-Version 0.000048
+Version 0.000049
 
 =head1 SYNOPSIS
 
