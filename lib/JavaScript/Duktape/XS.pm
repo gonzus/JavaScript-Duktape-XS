@@ -2,14 +2,83 @@ package JavaScript::Duktape::XS;
 
 use strict;
 use warnings;
-
-use XSLoader;
 use parent 'Exporter';
+
+use Text::Trim qw(trim rtrim);
+use XSLoader;
 
 our $VERSION = '0.000049';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
+
+sub _get_js_source_fragment {
+    my ($context, $range) = @_;
+
+    $range //= 5;
+    foreach my $frame (@{ $context->{frames} }) {
+        open my $fh, '<', $frame->{file};
+        if (!$fh) {
+            # TODO: error message?
+            return;
+        }
+        my $lineno = 0;
+        my @lines;
+        while (my $line = <$fh>) {
+            ++$lineno;
+            next unless $lineno >= ($frame->{line} - $range);
+            $frame->{line_offset} = $lineno unless exists $frame->{line_offset};
+
+            last unless $lineno <= ($frame->{line} + $range);
+            push @lines, rtrim($line);
+        }
+        $frame->{lines} = \@lines;
+    }
+}
+
+sub parse_js_stacktrace {
+    my ($self, $stacktrace_lines, $desired_frames) = @_;
+
+    $desired_frames //= 1;
+
+    # @contexts => [ {
+    #   message => "undefined variable foo",
+    #   frames => [ {
+    #       file => 'foo.js',
+    #       line => 232,  # line 232 is the one with the error
+    #       line_offset => 230, # first line in @lines is 230
+    #       lines => [
+    #           "function a()",
+    #           "{",
+    #           "  return foo.length",
+    #           "}",
+    #       ],
+    #   }, {...} ]
+    #   } ]
+    my @contexts;
+    foreach my $line (@$stacktrace_lines) {
+        my @texts = split /\n/, trim($line);
+        my %context;
+        $context{frames} = [];
+        foreach my $text (@texts) {
+            $text = trim($text);
+            next unless $text;
+
+            $context{message} = $text unless exists $context{message};
+
+            next unless $text =~ m/^\s*at\s*(\S*)\s*\((.*):([0-9]+)\)\s*$/;
+            push @{ $context{frames} //= [] }, {
+                file => $2,
+                line => $3,
+            };
+            last if scalar @{ $context{frames} } >= $desired_frames;
+        }
+        next unless exists $context{message};
+        _get_js_source_fragment(\%context);
+        push @contexts, \%context;
+    }
+    return \@contexts;
+}
 
 1;
 
@@ -50,7 +119,12 @@ Version 0.000049
     $duk->dispatch_function_in_event_loop('function_name');
 
     my $stats_href = $duk->get_stats();
+    $duk->reset_stats();
+
     my $msgs_href = $duk->get_msgs();
+    $duk->reset_msgs();
+
+    my $context = $duk->parse_js_stacktrace($stacktrace_lines, 2);
 
 =head1 DESCRIPTION
 
@@ -126,10 +200,25 @@ of JavaScript code:
 Return a hashref with the statistics gathered as a result of creating the XS
 object with option C<gather_stats> set to true.
 
+=head2 reset_stats
+
+Reset the accumulated statistics, as if the XS object had just been created.
+
 =head2 get_msgs
 
 Return a hashref with the messages collected as a result of creating the XS
 object with option C<save_messages> set to true.
+
+=head2 reset_msgs
+
+Reset the accumulated messages, as if the XS object had just been created.
+
+=head2 parse_js_stacktrace
+
+Parse a JavaScript stacktrace (usually returned via C<get_msgs>) and obtain
+structured information from it.  For each of the number of frames requested
+(default to 1), it gets the error message, the file name and line number where
+the error happened, and an array of lines surrounding the actual error message.
 
 =head1 SEE ALSO
 
