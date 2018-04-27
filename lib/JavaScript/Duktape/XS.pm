@@ -110,6 +110,8 @@ Version 0.000051
     $duk->set('my.object.slot', { foo => [ 4, 5 ] });
     my $href = $duk->get('my.object.slot');
 
+    if ($duk->exists('my.object.slot')) { ... }
+
     # When function_name is called from JS, the arguments passed in
     # will be converted to Perl values; likewise, the value returned
     # from the Perl function will be converted to JS values.
@@ -175,6 +177,11 @@ Get the value stored in a JavaScript variable or object slot.
 The JavaScript value is converted into an equivalent Perl value, so you can
 freely pass nested structures (hashes of arrays of hashes) and they will be
 handled correctly.
+
+=head2 exists
+
+Checks to see if there is a value stored in a JavaScript variable or object
+slot. Returns a boolean and avoids all JavaScript to Perl value converions.
 
 =head2 eval
 

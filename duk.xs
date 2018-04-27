@@ -633,6 +633,22 @@ get(Duk* duk, const char* name)
     stats_stop(aTHX_ duk, &stats, "get");
   OUTPUT: RETVAL
 
+SV*
+exists(Duk* duk, const char* name)
+  PREINIT:
+    duk_context* ctx = 0;
+    Stats stats;
+  CODE:
+    ctx = duk->ctx;
+    RETVAL = &PL_sv_no; // return false by default
+    stats_start(aTHX_ duk, &stats);
+    if (duk_get_global_string(ctx, name)) {
+        RETVAL = &PL_sv_yes;
+        duk_pop(ctx);
+    }
+    stats_stop(aTHX_ duk, &stats, "exists");
+  OUTPUT: RETVAL
+
 int
 set(Duk* duk, const char* name, SV* value)
   PREINIT:
