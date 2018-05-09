@@ -27,4 +27,5 @@ t/05_stats.t
 t/06_stacktrace.t
 t/07_grab.t
 t/08_source.t
+t/09_encoding.t
 typemap
