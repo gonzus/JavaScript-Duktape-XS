@@ -125,6 +125,17 @@ static void duk__console_reg_vararg_func(duk_context *ctx, duk_c_function func, 
 }
 
 void duk_console_init(duk_context *ctx, duk_uint_t flags) {
+    duk_uint_t flags_orig;
+
+	/* If both DUK_CONSOLE_TO_STDOUT and DUK_CONSOLE_TO_STDERR where specified,
+	 * just turn off DUK_CONSOLE_TO_STDOUT and keep DUK_CONSOLE_TO_STDERR. */
+	if ((flags & DUK_CONSOLE_TO_STDOUT) &&
+	    (flags & DUK_CONSOLE_TO_STDERR)) {
+	    flags &= ~DUK_CONSOLE_TO_STDOUT;
+	}
+	/* Remember the (possibly corrected) flags we received. */
+	flags_orig = flags;
+
 	duk_push_object(ctx);
 
 	/* Custom function to format objects; user can replace.
@@ -143,15 +154,24 @@ void duk_console_init(duk_context *ctx, duk_uint_t flags) {
 		"})(Duktape.enc)");
 	duk_put_prop_string(ctx, -2, "format");
 
+	flags = flags_orig;
+	if (!(flags & DUK_CONSOLE_TO_STDOUT) &&
+	    !(flags & DUK_CONSOLE_TO_STDERR)) {
+	    /* No output indicators were specified; these levels go to stdout. */
+	    flags |= DUK_CONSOLE_TO_STDOUT;
+	}
 	duk__console_reg_vararg_func(ctx, duk__console_assert, "assert", flags);
 	duk__console_reg_vararg_func(ctx, duk__console_log, "log", flags);
 	duk__console_reg_vararg_func(ctx, duk__console_log, "debug", flags);  /* alias to console.log */
 	duk__console_reg_vararg_func(ctx, duk__console_trace, "trace", flags);
 	duk__console_reg_vararg_func(ctx, duk__console_info, "info", flags);
 
-    /* from here on, things go to stderr by default */
-    flags |= DUK_CONSOLE_TO_STDERR;
-
+	flags = flags_orig;
+	if (!(flags & DUK_CONSOLE_TO_STDOUT) &&
+	    !(flags & DUK_CONSOLE_TO_STDERR)) {
+	    /* No output indicators were specified; these levels go to stderr. */
+	    flags |= DUK_CONSOLE_TO_STDERR;
+	}
 	duk__console_reg_vararg_func(ctx, duk__console_warn, "warn", flags);
 	duk__console_reg_vararg_func(ctx, duk__console_error, "error", flags);
 	duk__console_reg_vararg_func(ctx, duk__console_error, "exception", flags);  /* alias to console.error */

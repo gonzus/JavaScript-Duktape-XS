@@ -14,9 +14,11 @@ extern "C" {
 /* Flush output after every call. */
 #define DUK_CONSOLE_FLUSH          (1 << 1)
 
-/* Send output to stderr. */
-#define DUK_CONSOLE_TO_STDERR      (1 << 2)
+/* Send output to stdout. */
+#define DUK_CONSOLE_TO_STDOUT      (1 << 2)
 
+/* Send output to stderr. */
+#define DUK_CONSOLE_TO_STDERR      (1 << 3)
 
 /* The console handler prototype */
 typedef int (ConsoleHandler)(duk_uint_t flags, void* data,
