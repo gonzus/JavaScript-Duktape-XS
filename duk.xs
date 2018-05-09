@@ -214,6 +214,7 @@ static SV* duk_to_perl(pTHX_ duk_context* ctx, int pos)
             duk_size_t clen = 0;
             const char* cstr = duk_get_lstring(ctx, pos, &clen);
             ret = newSVpvn(cstr, clen);
+            SvUTF8_on(ret); // yes, always
             break;
         }
         case DUK_TYPE_OBJECT: {
