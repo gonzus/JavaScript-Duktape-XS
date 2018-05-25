@@ -39,7 +39,7 @@ sub test_set_get_and_exists {
     foreach my $case (sort keys %values) {
         my $name = "name_$case";
         my $expected = $values{$case};
-        ok(!$duk->exists($name), "does not exists yet for [$case]");
+        ok(!$duk->exists($name), "does not exist yet for [$case]");
         $duk->set($name, $expected);
         my $got = $duk->get($name);
         ok($duk->exists($name), "exists for [$case]");
