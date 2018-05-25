@@ -25,4 +25,25 @@ typedef struct Duk {
     HV* msgs;
 } Duk;
 
+/*
+ * We use these two functions to convert back and forth between the Perl
+ * representation of an object and the JS one.
+ *
+ * Because data in Perl and JS can be nested (array of hashes of arrays of...),
+ * the functions are recursive.
+ *
+ * pl_duk_to_perl: takes a JS value from a given position in the duktape stack,
+ * and creates the equivalent Perl value.
+ *
+ * pl_perl_to_duk: takes a Perl value and leaves the equivalent JS value at the
+ * top of the duktape stack.
+ */
+SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos);
+int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx);
+
+/*
+ * This is a generic dispatcher that allows calling any Perl function from JS.
+ */
+int pl_call_perl_sv(duk_context* ctx, SV* func);
+
 #endif
