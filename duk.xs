@@ -10,8 +10,7 @@
  *
  * http://duktape.org/index.html
  */
-#include "util.h"
-#include "duktape.h"
+#include "pl_duk.h"
 #include "c_eventloop.h"
 #include "duk_console.h"
 
@@ -28,18 +27,6 @@
 
 #define DUK_OPT_FLAG_GATHER_STATS      0x01
 #define DUK_OPT_FLAG_SAVE_MESSAGES     0x02
-
-/*
- * This is our internal data structure.  For now it only contains a pointer to
- * a duktape context.  We will add other stuff here.
- */
-typedef struct Duk {
-    duk_context* ctx;
-    int pagesize;
-    unsigned long flags;
-    HV* stats;
-    HV* msgs;
-} Duk;
 
 typedef struct Stats {
     double t0, t1;
@@ -448,6 +435,7 @@ static int register_native_functions(Duk* duk)
     }
     return n;
 }
+
 static int print_console_messages(duk_uint_t flags, void* data,
                                   const char* fmt, va_list ap)
 {
@@ -492,6 +480,7 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
         croak("Could not create duk heap\n");
     }
 
+    // register a bunch of native  functions
     register_native_functions(duk);
 
     // Register our event loop dispatcher, otherwise calls to
