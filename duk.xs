@@ -15,6 +15,7 @@
 #include "c_eventloop.h"
 #include "duk_console.h"
 
+#define DUK_GC_RUNS                    2
 #define DUK_NAME_ROOT                  "_perl_"
 #define DUK_NAME_GENERIC_CALLBACK      "generic_callback"
 
@@ -710,4 +711,19 @@ dispatch_function_in_event_loop(Duk* duk, const char* func)
     stats_start(aTHX_ duk, &stats);
     RETVAL = newSViv(run_function_in_event_loop(duk, func));
     stats_stop(aTHX_ duk, &stats, "dispatch");
+  OUTPUT: RETVAL
+
+SV*
+run_gc(Duk* duk)
+  PREINIT:
+    duk_context* ctx = 0;
+    Stats stats;
+  CODE:
+    ctx = duk->ctx;
+    stats_start(aTHX_ duk, &stats);
+    for (int j = 0; j < DUK_GC_RUNS; ++j) {
+        duk_gc(ctx, DUK_GC_COMPACT);
+    }
+    stats_stop(aTHX_ duk, &stats, "run_gc");
+    RETVAL = newSVnv(DUK_GC_RUNS);
   OUTPUT: RETVAL

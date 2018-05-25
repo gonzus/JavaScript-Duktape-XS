@@ -128,6 +128,8 @@ Version 0.000052
 
     my $context = $duk->parse_js_stacktrace($stacktrace_lines, 2);
 
+    my $rounds = $duk->run_gc();
+
 =head1 DESCRIPTION
 
 This module provides an XS wrapper to call Duktape from Perl.
@@ -226,6 +228,12 @@ Parse a JavaScript stacktrace (usually returned via C<get_msgs>) and obtain
 structured information from it.  For each of the number of frames requested
 (default to 1), it gets the error message, the file name and line number where
 the error happened, and an array of lines surrounding the actual error message.
+
+=head2 run_gc
+
+Run at least one round of the Duktape garbage collector, and return the number
+of rounds that were effectively run.  The documentation recommends to run two
+rounds, so that's what we always do.
 
 =head1 SEE ALSO
 
