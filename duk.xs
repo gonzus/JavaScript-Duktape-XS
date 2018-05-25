@@ -11,7 +11,7 @@
  * http://duktape.org/index.html
  */
 #include "pl_duk.h"
-#include "c_eventloop.h"
+#include "pl_eventloop.h"
 #include "duk_console.h"
 
 #define DUK_GC_RUNS                    2
@@ -483,9 +483,8 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
     // register a bunch of native  functions
     register_native_functions(duk);
 
-    // Register our event loop dispatcher, otherwise calls to
-    // dispatch_function_in_event_loop will not work.
-    eventloop_register(duk->ctx);
+    // register event loop dispatcher
+    pl_register_eventloop(duk);
 
     // initialize console object
     duk_console_init(duk->ctx, DUK_CONSOLE_PROXY_WRAPPER | DUK_CONSOLE_FLUSH);
@@ -549,32 +548,6 @@ static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
 
     save_stat(aTHX_ duk, name, "elapsed_us", stats->t1 - stats->t0);
     save_stat(aTHX_ duk, name, "memory_bytes", stats->m1 - stats->m0);
-}
-
-static int run_function_in_event_loop(Duk* duk, const char* func)
-{
-    duk_context* ctx = duk->ctx;
-
-    // Start a zero timer which will call our function from the event loop.
-    duk_int_t rc = 0;
-    char js[256];
-    int len = sprintf(js, "setTimeout(function() { %s(); }, 0);", func);
-    rc = duk_peval_lstring(ctx, js, len);
-    if (rc != DUK_EXEC_SUCCESS) {
-        croak("Could not eval JS event loop dispatcher %*.*s: %d - %s\n",
-              len, len, js, rc, duk_safe_to_string(ctx, -1));
-    }
-    duk_pop(ctx);
-
-    // Launch eventloop; this call only returns after the eventloop terminates.
-    rc = duk_safe_call(ctx, eventloop_run, duk, 0 /*nargs*/, 1 /*nrets*/);
-    if (rc != DUK_EXEC_SUCCESS) {
-        croak("JS event loop run failed: %d - %s\n",
-              rc, duk_safe_to_string(ctx, -1));
-    }
-    duk_pop(ctx);
-
-    return 0;
 }
 
 static MGVTBL session_magic_vtbl = { .svt_free = session_dtor };
@@ -698,7 +671,7 @@ dispatch_function_in_event_loop(Duk* duk, const char* func)
     Stats stats;
   CODE:
     stats_start(aTHX_ duk, &stats);
-    RETVAL = newSViv(run_function_in_event_loop(duk, func));
+    RETVAL = newSViv(pl_run_function_in_event_loop(duk, func));
     stats_stop(aTHX_ duk, &stats, "dispatch");
   OUTPUT: RETVAL
 
