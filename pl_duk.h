@@ -45,6 +45,9 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx);
  */
 int pl_call_perl_sv(duk_context* ctx, SV* func);
 
+// Set the value for a global object or a slot in an object
+int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value);
+
 // Run the Duktape GC
 int pl_run_gc(Duk* duk);
 

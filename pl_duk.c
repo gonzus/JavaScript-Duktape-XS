@@ -225,6 +225,46 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
     return 1;
 }
 
+int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value)
+{
+    if (sv_isobject(value)) {
+        SV* obj = newSVsv(value);
+        duk_push_pointer(ctx, obj);
+    } else if (!pl_perl_to_duk(aTHX_ value, ctx)) {
+        return 0;
+    }
+    int last_dot = -1;
+    int len = 0;
+    for (; name[len] != '\0'; ++len) {
+        if (name[len] == '.') {
+            last_dot = len;
+        }
+    }
+    if (last_dot < 0) {
+        if (!duk_put_global_lstring(ctx, name, len)) {
+            croak("Could not save duk value for %s\n", name);
+        }
+    } else {
+        duk_push_lstring(ctx, name + last_dot + 1, len - last_dot - 1);
+        if (duk_peval_lstring(ctx, name, last_dot) != 0) {
+            croak("Could not eval JS object %*.*s: %s\n",
+                  last_dot, last_dot, name, duk_safe_to_string(ctx, -1));
+        }
+#if 0
+        duk_enum(ctx, -1, 0);
+        while (duk_next(ctx, -1, 0)) {
+            fprintf(stderr, "KEY [%s]\n", duk_get_string(ctx, -1));
+            duk_pop(ctx);  /* pop_key */
+        }
+#endif
+         // Have [value, key, object], need [object, key, value], hence swap
+        duk_swap(ctx, -3, -1);
+        duk_put_prop(ctx, -3);
+        duk_pop(ctx); // pop object
+    }
+    return 1;
+}
+
 int pl_run_gc(Duk* duk)
 {
     /*

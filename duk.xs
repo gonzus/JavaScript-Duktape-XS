@@ -17,54 +17,6 @@
 #include "pl_native.h"
 #include "pl_util.h"
 
-static int set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value)
-{
-    if (sv_isobject(value)) {
-        SV* obj = newSVsv(value);
-        duk_push_pointer(ctx, obj);
-    } else if (!pl_perl_to_duk(aTHX_ value, ctx)) {
-        return 0;
-    }
-    int last_dot = -1;
-    int len = 0;
-    for (; name[len] != '\0'; ++len) {
-        if (name[len] == '.') {
-            last_dot = len;
-        }
-    }
-    if (last_dot < 0) {
-        if (!duk_put_global_lstring(ctx, name, len)) {
-            croak("Could not save duk value for %s\n", name);
-        }
-    } else {
-        duk_push_lstring(ctx, name + last_dot + 1, len - last_dot - 1);
-        if (duk_peval_lstring(ctx, name, last_dot) != 0) {
-            croak("Could not eval JS object %*.*s: %s\n",
-                  last_dot, last_dot, name, duk_safe_to_string(ctx, -1));
-        }
-#if 0
-        duk_enum(ctx, -1, 0);
-        while (duk_next(ctx, -1, 0)) {
-            fprintf(stderr, "KEY [%s]\n", duk_get_string(ctx, -1));
-            duk_pop(ctx);  /* pop_key */
-        }
-#endif
-         // Have [value, key, object], need [object, key, value], hence swap
-        duk_swap(ctx, -3, -1);
-        duk_put_prop(ctx, -3);
-        duk_pop(ctx); // pop object
-    }
-    return 1;
-}
-
-static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
-{
-    UNUSED_ARG(sv);
-    Duk* duk = (Duk*) mg->mg_ptr;
-    duk_destroy_heap(duk->ctx);
-    return 0;
-}
-
 static void duk_fatal_error_handler(void* data, const char* msg)
 {
     UNUSED_ARG(data);
@@ -127,6 +79,14 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
     pl_console_init(duk);
 
     return duk;
+}
+
+static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
+{
+    UNUSED_ARG(sv);
+    Duk* duk = (Duk*) mg->mg_ptr;
+    duk_destroy_heap(duk->ctx);
+    return 0;
 }
 
 static MGVTBL session_magic_vtbl = { .svt_free = session_dtor };
@@ -205,7 +165,7 @@ set(Duk* duk, const char* name, SV* value)
   CODE:
     ctx = duk->ctx;
     pl_stats_start(aTHX_ duk, &stats);
-    RETVAL = set_global_or_property(aTHX_ ctx, name, value);
+    RETVAL = pl_set_global_or_property(aTHX_ ctx, name, value);
     pl_stats_stop(aTHX_ duk, &stats, "set");
   OUTPUT: RETVAL
 
