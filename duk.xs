@@ -11,15 +11,11 @@
  * http://duktape.org/index.html
  */
 #include "pl_duk.h"
+#include "pl_stats.h"
 #include "pl_eventloop.h"
 #include "pl_console.h"
 
 #define DUK_GC_RUNS                    2
-
-typedef struct Stats {
-    double t0, t1;
-    double m0, m1;
-} Stats;
 
 /*
  * Native print callable from JS
@@ -40,33 +36,6 @@ static duk_ret_t native_now_ms(duk_context* ctx)
 {
     duk_push_number(ctx, (duk_double_t) (now_us() / 1000.0));
     return 1; //  return value at top
-}
-
-static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, double value)
-{
-    STRLEN clen = strlen(category);
-    STRLEN nlen = strlen(name);
-    HV* data = 0;
-    SV** found = hv_fetch(duk->stats, category, clen, 0);
-    if (found) {
-        SV* ref = SvRV(*found);
-        /* value not a valid hashref? bail out */
-        if (SvTYPE(ref) != SVt_PVHV) {
-            return;
-        }
-        data = (HV*) ref;
-    } else {
-        data = newHV();
-        SV* ref = newRV_noinc((SV*) data);
-        if (hv_store(duk->stats, category, clen, ref, 0)) {
-            SvREFCNT_inc(ref);
-        }
-    }
-
-    SV* pvalue = sv_2mortal(newSVnv(value));
-    if (hv_store(data, name, nlen, pvalue, 0)) {
-        SvREFCNT_inc(pvalue);
-    }
 }
 
 static int set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value)
@@ -202,27 +171,6 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
     return duk;
 }
 
-static void stats_start(pTHX_ Duk* duk, Stats* stats)
-{
-    if (!(duk->flags & DUK_OPT_FLAG_GATHER_STATS)) {
-        return;
-    }
-    stats->t0 = now_us();
-    stats->m0 = total_memory_pages() * duk->pagesize;
-}
-
-static void stats_stop(pTHX_ Duk* duk, Stats* stats, const char* name)
-{
-    if (!(duk->flags & DUK_OPT_FLAG_GATHER_STATS)) {
-        return;
-    }
-    stats->t1 = now_us();
-    stats->m1 = total_memory_pages() * duk->pagesize;
-
-    save_stat(aTHX_ duk, name, "elapsed_us", stats->t1 - stats->t0);
-    save_stat(aTHX_ duk, name, "memory_bytes", stats->m1 - stats->m0);
-}
-
 static MGVTBL session_magic_vtbl = { .svt_free = session_dtor };
 
 MODULE = JavaScript::Duktape::XS       PACKAGE = JavaScript::Duktape::XS
@@ -267,12 +215,12 @@ get(Duk* duk, const char* name)
   CODE:
     ctx = duk->ctx;
     RETVAL = &PL_sv_undef; // return undef by default
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     if (duk_get_global_string(ctx, name)) {
         RETVAL = pl_duk_to_perl(aTHX_ ctx, -1);
         duk_pop(ctx);
     }
-    stats_stop(aTHX_ duk, &stats, "get");
+    pl_stats_stop(aTHX_ duk, &stats, "get");
   OUTPUT: RETVAL
 
 SV*
@@ -283,12 +231,12 @@ exists(Duk* duk, const char* name)
   CODE:
     ctx = duk->ctx;
     RETVAL = &PL_sv_no; // return false by default
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     if (duk_get_global_string(ctx, name)) {
         RETVAL = &PL_sv_yes;
         duk_pop(ctx);
     }
-    stats_stop(aTHX_ duk, &stats, "exists");
+    pl_stats_stop(aTHX_ duk, &stats, "exists");
   OUTPUT: RETVAL
 
 int
@@ -298,9 +246,9 @@ set(Duk* duk, const char* name, SV* value)
     Stats stats;
   CODE:
     ctx = duk->ctx;
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     RETVAL = set_global_or_property(aTHX_ ctx, name, value);
-    stats_stop(aTHX_ duk, &stats, "set");
+    pl_stats_stop(aTHX_ duk, &stats, "set");
   OUTPUT: RETVAL
 
 SV*
@@ -315,7 +263,7 @@ eval(Duk* duk, const char* js, const char* file = 0)
 
     /* flags |= DUK_COMPILE_STRICT; */
 
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     if (!file) {
         rc = duk_pcompile_string(ctx, flags, js);
     }
@@ -323,15 +271,15 @@ eval(Duk* duk, const char* js, const char* file = 0)
         duk_push_string(ctx, file);
         rc = duk_pcompile_string_filename(ctx, flags, js);
     }
-    stats_stop(aTHX_ duk, &stats, "compile");
+    pl_stats_stop(aTHX_ duk, &stats, "compile");
 
     if (rc != DUK_EXEC_SUCCESS) {
         croak("JS could not compile code: %s\n", duk_safe_to_string(ctx, -1));
     }
 
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     rc = duk_pcall(ctx, 0);
-    stats_stop(aTHX_ duk, &stats, "run");
+    pl_stats_stop(aTHX_ duk, &stats, "run");
     check_duktape_call_for_errors(rc, ctx);
 
     RETVAL = pl_duk_to_perl(aTHX_ ctx, -1);
@@ -343,9 +291,9 @@ dispatch_function_in_event_loop(Duk* duk, const char* func)
   PREINIT:
     Stats stats;
   CODE:
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     RETVAL = newSViv(pl_run_function_in_event_loop(duk, func));
-    stats_stop(aTHX_ duk, &stats, "dispatch");
+    pl_stats_stop(aTHX_ duk, &stats, "dispatch");
   OUTPUT: RETVAL
 
 SV*
@@ -355,10 +303,10 @@ run_gc(Duk* duk)
     Stats stats;
   CODE:
     ctx = duk->ctx;
-    stats_start(aTHX_ duk, &stats);
+    pl_stats_start(aTHX_ duk, &stats);
     for (int j = 0; j < DUK_GC_RUNS; ++j) {
         duk_gc(ctx, DUK_GC_COMPACT);
     }
-    stats_stop(aTHX_ duk, &stats, "run_gc");
+    pl_stats_stop(aTHX_ duk, &stats, "run_gc");
     RETVAL = newSVnv(DUK_GC_RUNS);
   OUTPUT: RETVAL
