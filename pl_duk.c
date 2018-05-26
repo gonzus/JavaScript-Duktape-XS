@@ -1,5 +1,6 @@
 #include "pl_duk.h"
 
+#define PL_GC_RUNS                2
 #define PL_NAME_ROOT              "_perl_"
 #define PL_NAME_GENERIC_CALLBACK  "generic_callback"
 
@@ -222,6 +223,25 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
     FREETMPS;
     LEAVE;
     return 1;
+}
+
+int pl_run_gc(Duk* duk)
+{
+    /*
+     * From docs in http://duktape.org/api.html#duk_gc
+     *
+     * You may want to call this function twice to ensure even objects with
+     * finalizers are collected.  Currently it takes two mark-and-sweep rounds
+     * to collect such objects.  First round marks the object as finalizable
+     * and runs the finalizer.  Second round ensures the object is still
+     * unreachable after finalization and then frees the object.
+     */
+    duk_context* ctx = duk->ctx;
+    for (int j = 0; j < PL_GC_RUNS; ++j) {
+        // DUK_GC_COMPACT: Force object property table compaction
+        duk_gc(ctx, DUK_GC_COMPACT);
+    }
+    return PL_GC_RUNS;
 }
 
 static duk_ret_t perl_caller(duk_context* ctx)

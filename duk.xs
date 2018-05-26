@@ -17,8 +17,6 @@
 #include "pl_native.h"
 #include "pl_util.h"
 
-#define DUK_GC_RUNS                    2
-
 static int set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value)
 {
     if (sv_isobject(value)) {
@@ -259,14 +257,9 @@ dispatch_function_in_event_loop(Duk* duk, const char* func)
 SV*
 run_gc(Duk* duk)
   PREINIT:
-    duk_context* ctx = 0;
     Stats stats;
   CODE:
-    ctx = duk->ctx;
     pl_stats_start(aTHX_ duk, &stats);
-    for (int j = 0; j < DUK_GC_RUNS; ++j) {
-        duk_gc(ctx, DUK_GC_COMPACT);
-    }
+    RETVAL = newSVnv(pl_run_gc(duk));
     pl_stats_stop(aTHX_ duk, &stats, "run_gc");
-    RETVAL = newSVnv(DUK_GC_RUNS);
   OUTPUT: RETVAL

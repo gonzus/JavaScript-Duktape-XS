@@ -45,4 +45,7 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx);
  */
 int pl_call_perl_sv(duk_context* ctx, SV* func);
 
+// Run the Duktape GC
+int pl_run_gc(Duk* duk);
+
 #endif
