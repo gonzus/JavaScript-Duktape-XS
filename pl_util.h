@@ -1,5 +1,5 @@
-#ifndef UTIL_H_
-#define UTIL_H_
+#ifndef PL_UTIL_H_
+#define PL_UTIL_H_
 
 #include "duktape.h"
 

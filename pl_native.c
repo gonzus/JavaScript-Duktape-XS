@@ -1,5 +1,5 @@
+#include "pl_util.h"
 #include "pl_native.h"
-#include "util.h"
 
 /*
  * Native print callable from JS

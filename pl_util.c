@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include "duk_console.h"
-#include "util.h"
+#include "pl_util.h"
 
 #define FILE_MEMORY_STATUS "/proc/self/statm"
 

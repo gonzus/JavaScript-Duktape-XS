@@ -1,7 +1,6 @@
 #ifndef PL_DUK_H
 #define PL_DUK_H
 
-#include "util.h"
 #include "duktape.h"
 
 #include "EXTERN.h"

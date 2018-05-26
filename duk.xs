@@ -15,6 +15,7 @@
 #include "pl_eventloop.h"
 #include "pl_console.h"
 #include "pl_native.h"
+#include "pl_util.h"
 
 #define DUK_GC_RUNS                    2
 

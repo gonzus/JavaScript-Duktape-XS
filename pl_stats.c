@@ -1,3 +1,4 @@
+#include "pl_util.h"
 #include "pl_stats.h"
 
 static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, double value)

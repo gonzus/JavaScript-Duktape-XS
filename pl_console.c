@@ -1,5 +1,6 @@
-#include "pl_console.h"
 #include "duk_console.h"
+#include "pl_util.h"
+#include "pl_console.h"
 
 static int print_console_messages(duk_uint_t flags, void* data,
                                   const char* fmt, va_list ap)
