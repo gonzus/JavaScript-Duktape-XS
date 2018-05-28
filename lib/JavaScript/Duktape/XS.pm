@@ -114,6 +114,8 @@ Version 0.000052
 
     my $typeof = $duk->typeof('my.object.slot');
 
+    my $ok = $duk->instanceof('my.car.object', 'Car');
+
     # When function_name is called from JS, the arguments passed in
     # will be converted to Perl values; likewise, the value returned
     # from the Perl function will be converted to JS values.
@@ -194,8 +196,10 @@ Returns a string with the JavaScript type of a given variable.
 It returns C<null> for null values, which fixes the long-standing bug of
 returning C<object> for null values.
 
-It does not work properly for C<boolean> values, since there is not (yet) a way
-to pass a boolean from Perl to JavaScript.
+=head2 instanceof
+
+Returns a true value when the variable given by the first parameter is an
+instance of the class given by the second parameter.
 
 =head2 eval
 

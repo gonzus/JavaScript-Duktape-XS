@@ -175,6 +175,27 @@ typeof(Duk* duk, const char* name)
     RETVAL = newSVpv(cstr, clen);
   OUTPUT: RETVAL
 
+SV*
+instanceof(Duk* duk, const char* object, const char* class)
+  PREINIT:
+    duk_context* ctx = 0;
+    Stats stats;
+  CODE:
+    ctx = duk->ctx;
+    RETVAL = &PL_sv_no; // return false by default
+    pl_stats_start(aTHX_ duk, &stats);
+    if (duk_get_global_string(ctx, object)) {
+        if (duk_get_global_string(ctx, class)) {
+            if (duk_instanceof(ctx, -2, -1)) {
+                RETVAL = &PL_sv_yes;
+            }
+            duk_pop(ctx);
+        }
+        duk_pop(ctx);
+    }
+    pl_stats_stop(aTHX_ duk, &stats, "instanceof");
+  OUTPUT: RETVAL
+
 int
 set(Duk* duk, const char* name, SV* value)
   PREINIT:
