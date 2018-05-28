@@ -190,6 +190,44 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
     return ret;
 }
 
+const char* pl_typeof(pTHX_ duk_context* ctx, int pos)
+{
+    const char* label = "undefined";
+    switch (duk_get_type(ctx, pos)) {
+        case DUK_TYPE_NONE:
+        case DUK_TYPE_UNDEFINED:
+            break;
+        case DUK_TYPE_NULL:
+            label = "null";
+            break;
+        case DUK_TYPE_BOOLEAN:
+            label = "boolean";
+            break;
+        case DUK_TYPE_NUMBER:
+            label = "number";
+            break;
+        case DUK_TYPE_STRING:
+            label = "string";
+            break;
+        case DUK_TYPE_OBJECT:
+            label = "object";
+            break;
+        case DUK_TYPE_POINTER:
+            label = "pointer";
+            break;
+        case DUK_TYPE_BUFFER:
+            label = "buffer";
+            break;
+        case DUK_TYPE_LIGHTFUNC:
+            label = "lightfunc";
+            break;
+        default:
+            croak("Don't know how to deal with an undetermined JS object\n");
+            break;
+    }
+    return label;
+}
+
 int pl_call_perl_sv(duk_context* ctx, SV* func)
 {
     duk_idx_t j = 0;

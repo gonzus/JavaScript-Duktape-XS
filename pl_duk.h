@@ -41,6 +41,11 @@ SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos);
 int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx);
 
 /*
+ * Return a Perl string with the type of the duktape variable
+ */
+const char* pl_typeof(pTHX_ duk_context* ctx, int pos);
+
+/*
  * This is a generic dispatcher that allows calling any Perl function from JS.
  */
 int pl_call_perl_sv(duk_context* ctx, SV* func);

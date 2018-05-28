@@ -157,6 +157,24 @@ exists(Duk* duk, const char* name)
     pl_stats_stop(aTHX_ duk, &stats, "exists");
   OUTPUT: RETVAL
 
+SV*
+typeof(Duk* duk, const char* name)
+  PREINIT:
+    duk_context* ctx = 0;
+    const char* cstr = "undefined";
+    STRLEN clen = 0;
+    Stats stats;
+  CODE:
+    ctx = duk->ctx;
+    pl_stats_start(aTHX_ duk, &stats);
+    if (duk_get_global_string(ctx, name)) {
+        cstr = pl_typeof(aTHX_ ctx, -1);
+        duk_pop(ctx);
+    }
+    pl_stats_stop(aTHX_ duk, &stats, "typeof");
+    RETVAL = newSVpv(cstr, clen);
+  OUTPUT: RETVAL
+
 int
 set(Duk* duk, const char* name, SV* value)
   PREINIT:
