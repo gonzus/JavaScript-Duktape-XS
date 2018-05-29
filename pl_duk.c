@@ -190,7 +190,7 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
     return ret;
 }
 
-const char* pl_typeof(pTHX_ duk_context* ctx, int pos)
+static const char* get_typeof(duk_context* ctx, int pos)
 {
     const char* label = "undefined";
     switch (duk_get_type(ctx, pos)) {
@@ -263,6 +263,89 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
     return 1;
 }
 
+static int find_last_dot(const char* name, int* len)
+{
+    int last_dot = -1;
+    *len = 0;
+    for (; name[*len] != '\0'; ++*len) {
+        if (name[*len] == '.') {
+            last_dot = *len;
+        }
+    }
+    return last_dot;
+}
+
+static int find_global_or_property(duk_context* ctx, const char* name)
+{
+    int ret = 0;
+    int len = 0;
+    int last_dot = find_last_dot(name, &len);
+    if (last_dot < 0) {
+        if (duk_get_global_string(ctx, name)) {
+            ret = 1;
+        }
+    } else {
+        if (duk_peval_lstring(ctx, name, last_dot) == 0) {
+            if (duk_get_prop_lstring(ctx, -1, name + last_dot + 1, len - last_dot - 1)) {
+                ret = 1;
+                duk_swap(ctx, -2, -1);
+                duk_pop(ctx); // pop object, leave value
+            } else {
+                duk_pop_2(ctx); // pop object and value (which was undef)
+            }
+        } else {
+        }
+    }
+    return ret;
+}
+
+SV* pl_exists_global_or_property(pTHX_ duk_context* ctx, const char* name)
+{
+    SV* ret = &PL_sv_no; // return false by default
+    if (find_global_or_property(ctx, name)) {
+        ret = &PL_sv_yes;
+        duk_pop(ctx); // pop value
+    }
+    return ret;
+}
+
+SV* pl_typeof_global_or_property(pTHX_ duk_context* ctx, const char* name)
+{
+    const char* cstr = "undefined";
+    STRLEN clen = 0;
+    SV* ret = 0;
+    if (find_global_or_property(ctx, name)) {
+        cstr = get_typeof(ctx, -1);
+        duk_pop(ctx); // pop value
+    }
+    ret = newSVpv(cstr, clen);
+    return ret;
+}
+
+SV* pl_instanceof_global_or_property(pTHX_ duk_context* ctx, const char* object, const char* class)
+{
+    SV* ret = &PL_sv_no; // return false by default
+    if (find_global_or_property(ctx, object)) {
+        if (find_global_or_property(ctx, class)) {
+            if (duk_instanceof(ctx, -2, -1)) {
+                ret = &PL_sv_yes;
+            }
+            duk_pop(ctx);
+        }
+        duk_pop(ctx);
+    }
+    return ret;
+}
+
+SV* pl_get_global_or_property(pTHX_ duk_context* ctx, const char* name)
+{
+    SV* ret = &PL_sv_undef; // return undef by default
+    if (find_global_or_property(ctx, name)) {
+        ret = pl_duk_to_perl(aTHX_ ctx, -1);
+    }
+    return ret;
+}
+
 int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value)
 {
     if (sv_isobject(value)) {
@@ -271,13 +354,8 @@ int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* valu
     } else if (!pl_perl_to_duk(aTHX_ value, ctx)) {
         return 0;
     }
-    int last_dot = -1;
     int len = 0;
-    for (; name[len] != '\0'; ++len) {
-        if (name[len] == '.') {
-            last_dot = len;
-        }
-    }
+    int last_dot = find_last_dot(name, &len);
     if (last_dot < 0) {
         if (!duk_put_global_lstring(ctx, name, len)) {
             croak("Could not save duk value for %s\n", name);
@@ -288,14 +366,7 @@ int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* valu
             croak("Could not eval JS object %*.*s: %s\n",
                   last_dot, last_dot, name, duk_safe_to_string(ctx, -1));
         }
-#if 0
-        duk_enum(ctx, -1, 0);
-        while (duk_next(ctx, -1, 0)) {
-            fprintf(stderr, "KEY [%s]\n", duk_get_string(ctx, -1));
-            duk_pop(ctx);  /* pop_key */
-        }
-#endif
-         // Have [value, key, object], need [object, key, value], hence swap
+        // Have [value, key, object], need [object, key, value], hence swap
         duk_swap(ctx, -3, -1);
         duk_put_prop(ctx, -3);
         duk_pop(ctx); // pop object

@@ -13,9 +13,11 @@ function Car(make, model, year) {
   this.year = year;
 }
 var auto = new Car('Honda', 'Accord', 1998);
+auto.older = new Car('Ford', 'T', 1945);
 JS
     my %data = (
-        auto => [ 'Car', 'Object' ],
+        'auto'       => [ 'Car', 'Object' ],
+        'auto.older' => [ 'Car', 'Object' ],
     );
     my $duk = JavaScript::Duktape::XS->new();
     ok($duk, "created JavaScript::Duktape::XS object");

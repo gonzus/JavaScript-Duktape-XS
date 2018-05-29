@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 
+use Data::Dumper;
 use Ref::Util qw/ is_scalarref /;
 use Test::More;
 use JavaScript::Duktape::XS;
@@ -47,9 +48,34 @@ JS
     }
 }
 
+sub test_typeof_object {
+    my $js = <<JS;
+function Car(make, model, year) {
+  this.make = make;
+  this.model = model;
+  this.year = year;
+}
+var auto = new Car('Honda', 'Accord', 1998);
+JS
+    my %fields = (
+        make => "string",
+        model => "string",
+        year => "number",
+    );
+    my $duk = JavaScript::Duktape::XS->new();
+    ok($duk, "created JavaScript::Duktape::XS object");
+    $duk->eval($js);
+
+    foreach my $field (sort keys %fields) {
+        my $got = $duk->typeof("auto.$field");
+        is($got, $fields{$field}, "got correct typeof for field $field");
+    }
+}
+
 sub main {
     test_typeof();
     test_typeof_boolean();
+    test_typeof_object();
     done_testing;
 
     return 0;

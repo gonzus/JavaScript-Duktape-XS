@@ -50,7 +50,11 @@ const char* pl_typeof(pTHX_ duk_context* ctx, int pos);
  */
 int pl_call_perl_sv(duk_context* ctx, SV* func);
 
-// Set the value for a global object or a slot in an object
+// Get / set the value for a global object or a slot in an object
+SV* pl_exists_global_or_property(pTHX_ duk_context* ctx, const char* name);
+SV* pl_typeof_global_or_property(pTHX_ duk_context* ctx, const char* name);
+SV* pl_instanceof_global_or_property(pTHX_ duk_context* ctx, const char* object, const char* class);
+SV* pl_get_global_or_property(pTHX_ duk_context* ctx, const char* name);
 int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value);
 
 // Run the Duktape GC
