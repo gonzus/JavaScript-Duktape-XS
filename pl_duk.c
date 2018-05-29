@@ -40,11 +40,10 @@ SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
             if (duk_is_c_function(ctx, pos)) {
                 // if the JS function has a slot with the Perl callback,
                 // then we know we created it, so we return that
-                if (!duk_get_prop_lstring(ctx, -1, PL_SLOT_GENERIC_CALLBACK, sizeof(PL_SLOT_GENERIC_CALLBACK) - 1)) {
-                    croak("JS object is an unrecognized function\n");
+                if (duk_get_prop_lstring(ctx, pos, PL_SLOT_GENERIC_CALLBACK, sizeof(PL_SLOT_GENERIC_CALLBACK) - 1)) {
+                    ret = (SV*) duk_get_pointer(ctx, pos);
                 }
-                ret = (SV*) duk_get_pointer(ctx, -1);
-                duk_pop(ctx); // pop function
+                duk_pop(ctx); // pop function / null pointer
             } else if (duk_is_array(ctx, pos)) {
                 int array_top = duk_get_length(ctx, pos);
                 AV* values = newAV();
