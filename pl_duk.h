@@ -12,6 +12,13 @@
 #define DUK_OPT_FLAG_GATHER_STATS      0x01
 #define DUK_OPT_FLAG_SAVE_MESSAGES     0x02
 
+#define PL_NAME_ROOT              "_perl_"
+#define PL_NAME_GENERIC_CALLBACK  "generic_callback"
+
+#define PL_SLOT_CREATE(name)      (PL_NAME_ROOT "." #name)
+
+#define PL_SLOT_GENERIC_CALLBACK  PL_SLOT_CREATE(PL_NAME_GENERIC_CALLBACK)
+
 /*
  * This is our internal data structure.  For now it only contains a pointer to
  * a duktape context.  We will add other stuff here.

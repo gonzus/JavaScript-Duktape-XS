@@ -1,12 +1,6 @@
 #include "pl_duk.h"
 
 #define PL_GC_RUNS                2
-#define PL_NAME_ROOT              "_perl_"
-#define PL_NAME_GENERIC_CALLBACK  "generic_callback"
-
-#define PL_SLOT_CREATE(name)      (PL_NAME_ROOT "." #name)
-
-#define PL_SLOT_GENERIC_CALLBACK  PL_SLOT_CREATE(PL_NAME_GENERIC_CALLBACK)
 
 static duk_ret_t perl_caller(duk_context* ctx);
 

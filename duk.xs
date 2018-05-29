@@ -12,6 +12,7 @@
  */
 #include "pl_duk.h"
 #include "pl_stats.h"
+#include "pl_module.h"
 #include "pl_eventloop.h"
 #include "pl_console.h"
 #include "pl_native.h"
@@ -71,6 +72,9 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
 
     // register a bunch of native functions
     pl_register_native_functions(duk);
+
+    // initialize module handling functions
+    pl_register_module_functions(duk);
 
     // register event loop dispatcher
     pl_register_eventloop(duk);
