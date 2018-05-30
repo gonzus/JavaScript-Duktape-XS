@@ -27,6 +27,7 @@ pl_util.c
 pl_util.h
 lib/JavaScript/Duktape/XS.pm
 bin/duktape-repl
+bin/release.sh
 LICENSE
 MANIFEST
 MANIFEST.SKIP
