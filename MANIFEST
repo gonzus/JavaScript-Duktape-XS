@@ -9,6 +9,8 @@ c_eventloop.h
 c_eventloop.js
 duk_console.c
 duk_console.h
+duk_module_node.c
+duk_module_node.h
 pl_console.c
 pl_console.h
 pl_duk.c
@@ -42,4 +44,7 @@ t/07_grab.t
 t/08_source.t
 t/09_encoding.t
 t/10_run_gc.t
+t/11_typeof.t
+t/12_instanceof.t
+t/13_module.t
 typemap
