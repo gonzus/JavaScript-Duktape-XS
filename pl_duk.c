@@ -67,7 +67,7 @@ SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
                     if (!nested) {
                         croak("Could not create Perl SV for hash\n");
                     }
-                    if (hv_store(values, kstr, klen, nested, 0)) {
+                    if (hv_store(values, kstr, -klen, nested, 0)) {
                         SvREFCNT_inc(nested);
                     }
                 }
@@ -138,21 +138,30 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
             duk_idx_t hash_pos = duk_push_object(ctx);
             hv_iterinit(values);
             while (1) {
+                SV* key = 0;
                 SV* value = 0;
-                I32 klen = 0;
                 char* kstr = 0;
+                STRLEN klen = 0;
                 HE* entry = hv_iternext(values);
                 if (!entry) {
                     break; // no more hash keys
                 }
-                kstr = hv_iterkey(entry, &klen);
-                if (!kstr || klen < 0) {
+                key = hv_iterkeysv(entry);
+                if (!key) {
                     continue; // invalid key
                 }
+                SvUTF8_on(key); // yes, always
+                kstr = SvPV(key, klen);
+                if (!kstr) {
+                    continue; // invalid key
+                }
+
                 value = hv_iterval(values, entry);
                 if (!value) {
                     continue; // invalid value
                 }
+                SvUTF8_on(value); // yes, always
+
                 if (!pl_perl_to_duk(aTHX_ value, ctx)) {
                     croak("Could not create JS element for hash\n");
                 }
