@@ -134,6 +134,10 @@ Version 0.000052
 
     my $rounds = $duk->run_gc();
 
+    $duk->set('perl_module_resolve', \&module_resolve);
+    $duk->set('perl_module_load',    \&module_load);
+    $duk->eval('var badger = require("badger");');
+
 =head1 DESCRIPTION
 
 This module provides an XS wrapper to call Duktape from Perl.
@@ -250,6 +254,18 @@ the error happened, and an array of lines surrounding the actual error message.
 Run at least one round of the Duktape garbage collector, and return the number
 of rounds that were effectively run.  The documentation recommends to run two
 rounds, so that's what we always do.
+
+=head1 MODULE SUPPORT
+
+There is support for managing JavaScript modules in the style of node.js.  In
+order to do this, you need to set two Perl callbacks:
+
+    $duk->set('perl_module_resolve', \&module_resolve);
+    $duk->set('perl_module_load',    \&module_load);
+
+Please see
+L<https://github.com/svaarala/duktape/tree/master/extras/module-node> for more
+details.
 
 =head1 SEE ALSO
 
