@@ -378,6 +378,8 @@ int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* valu
 
 int pl_run_gc(Duk* duk)
 {
+    int j = 0;
+
     /*
      * From docs in http://duktape.org/api.html#duk_gc
      *
@@ -388,7 +390,7 @@ int pl_run_gc(Duk* duk)
      * unreachable after finalization and then frees the object.
      */
     duk_context* ctx = duk->ctx;
-    for (int j = 0; j < PL_GC_RUNS; ++j) {
+    for (j = 0; j < PL_GC_RUNS; ++j) {
         // DUK_GC_COMPACT: Force object property table compaction
         duk_gc(ctx, DUK_GC_COMPACT);
     }
