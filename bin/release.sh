@@ -45,6 +45,9 @@ git status >>$errors
 echo "== Checking current version ==" >>$errors
 git grep -i version | egrep -v '^(duktape.[hc]|duk_.*.[hc]|ppport.h|Makefile.PL|bin/release.sh)' | egrep -v 'XSLoader|head' >>$errors
 
+echo "== Checking last documented version ==" >>$errors
+cat Changes | head -n 1 | awk '{print $1}' >>$errors
+
 echo "== Checking missing modules required by tests ==" >>$errors
 mkfifo /tmp/release_$$_a
 git grep use t | sed 's/::/@@/g' | awk -F: '{print $2}' | sed 's/qw.*//g' | sed 's/#.*//g' | tr -d ';' | sed 's/ *$//g' | sed 's/@@/::/g' | egrep -v 'use (strict|warnings|utf8|JavaScript::Duktape::XS)' | sed 's/^use //g' | sort -u >/tmp/release_$$_a &
