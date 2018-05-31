@@ -191,14 +191,16 @@ handled correctly.
 =head2 exists
 
 Checks to see if there is a value stored in a JavaScript variable or object
-slot. Returns a boolean and avoids all JavaScript to Perl value converions.
+slot. Returns a boolean and avoids all JavaScript to Perl value conversions.
 
 =head2 typeof
 
-Returns a string with the JavaScript type of a given variable.
+Returns a string with the JavaScript type of a given variable.  Possible
+returned values are C<undefined>, C<null>, C<boolean>, C<number>, C<string>,
+C<object>, C<pointer>, C<buffer>, C<lightfunc>.
 
-It returns C<null> for null values, which fixes the long-standing bug of
-returning C<object> for null values.
+This method returns C<null> for null values, which fixes the long-standing
+JavaScript bug of returning C<object> for null values.
 
 =head2 instanceof
 
