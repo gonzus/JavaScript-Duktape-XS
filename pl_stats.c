@@ -11,6 +11,7 @@ static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, do
         SV* ref = SvRV(*found);
         /* value not a valid hashref? bail out */
         if (SvTYPE(ref) != SVt_PVHV) {
+            croak("Found category %s in stats but it is not a hashref\n", category);
             return;
         }
         data = (HV*) ref;
@@ -20,11 +21,17 @@ static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, do
         if (hv_store(duk->stats, category, clen, ref, 0)) {
             SvREFCNT_inc(ref);
         }
+        else {
+            croak("Could not create category %s in stats\n", category);
+        }
     }
 
     SV* pvalue = sv_2mortal(newSVnv(value));
     if (hv_store(data, name, nlen, pvalue, 0)) {
         SvREFCNT_inc(pvalue);
+    }
+    else {
+        croak("Could not create entry %s for category %s in stats\n", name, category);
     }
 }
 
