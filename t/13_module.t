@@ -58,26 +58,41 @@ sub test_module {
     # printf STDERR ("cow: %s", Dumper($duk->get('r')));
     ok($duk->get('c') >= 0, 'nested require()');
 
+    $duk->eval('var ape1 = require("ape"); var ape2 = require("ape");');
+    my $a1 = $duk->get('ape1');
+    my $a2 = $duk->get('ape2');
+    is_deeply($a1, $a2, 'cached require');
+
+    $duk->eval('var ape1 = require("ape"); var inCache = "ape.js" in require.cache; delete require.cache["ape.js"]; var ape2 = require("ape");');
+    ok($duk->get('inCache'), 'cached required, inCache');
+    ok($duk->get('ape2') ne $duk->get('ape1'), 'cached require, not equal');
+
+    $duk->eval('var ape3 = require("ape");');
+
+    # This will not work because typeof will never return function
     # ./test 'var ape = require("ape"); assert(typeof ape.module.require === "function", "module.require()");'
-    # ./test 'var ape = require("ape"); assert(ape.module.exports === ape, "module.exports");'
-    # ./test 'var ape = require("ape"); assert(ape.module.id === "ape.js" && ape.module.id === ape.module.filename, "module.id");'
-    # ./test 'var ape = require("ape"); assert(ape.module.filename === "ape.js", "module.filename");'
-    # ./test 'var ape = require("ape"); assert(ape.module.loaded === true && ape.wasLoaded === false, "module.loaded");'
-    # ./test 'var ape = require("ape"); assert(ape.__filename === "ape.js", "__filename");'
+    # is($duk->typeof('ape3.module.require'), "function", "module.require()");
+    $duk->eval('var ape_type = typeof ape3.module.require');
+    is($duk->get('ape_type'), "function", "module.require is a function");
 
-    # $duk->eval('var ape1 = require("ape"); var ape2 = require("ape");');
-    # is_deeply($duk->get('ape1'), $duk->get('ape2'), 'cached require');
-    # my $a1 = $duk->get('ape1');
-    # my $a2 = $duk->get('ape2');
-    # is_deeply($a1, $a2, 'cached require');
+    my $a30 = $duk->get('ape3');
+    my $a31 = $duk->get('ape3.module.exports');
+    my $a32 = $duk->get('ape3.module.id');
+    my $a33 = $duk->get('ape3.module.filename');
+    my $a34 = $duk->get('ape3.module.loaded');
+    my $a35 = $duk->get('ape3.wasLoaded');
+    my $a36 = $duk->get('ape3.__filename');
 
-    # $duk->eval('var ape1 = require("ape"); var inCache = "ape.js" in require.cache; delete require.cache["ape.js"]; var ape2 = require("ape");');
-    # ok($duk->get('inCache'), 'cached required, inCache');
-    # ok($duk->get('ape2') ne $duk->get('ape1'), 'cached require, not equal');
+    is_deeply($a30, $a31, 'aped require');
 
-    # $duk->eval('var ape3 = require("ape");');
-    # printf STDERR ("ape: %s", Dumper($duk->get('ape3')));;
-    # is($duk->typeof('ape3'), "function", "module.require()");
+    is($a32, 'ape.js', 'ape module id');
+
+    is($a32, $a33, 'ape module filename');
+
+    ok( $a34, 'module loaded');
+    ok(!$a35, 'wasLoaded');
+
+    is($a36, 'ape.js', 'ape __filename');
 
     $duk->eval('var badger = require("badger");');
     # printf STDERR ("badger: %s", Dumper($duk->get('badger')));
