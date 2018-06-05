@@ -272,7 +272,27 @@ static const char* get_typeof(duk_context* ctx, int pos)
             label = "string";
             break;
         case DUK_TYPE_OBJECT:
-            label = "object";
+            if (duk_is_array(ctx, pos)) {
+                label = "array";
+            }
+            else if (duk_is_symbol(ctx, pos)) {
+                label = "symbol";
+            }
+            else if (duk_is_pointer(ctx, pos)) {
+                label = "pointer";
+            }
+            else if (duk_is_function(ctx, pos)) {
+                label = "function";
+            }
+            else if (duk_is_c_function(ctx, pos)) {
+                label = "c_function";
+            }
+            else if (duk_is_thread(ctx, pos)) {
+                label = "thread";
+            }
+            else {
+                label = "object";
+            }
             break;
         case DUK_TYPE_POINTER:
             label = "pointer";

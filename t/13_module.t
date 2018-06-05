@@ -69,11 +69,7 @@ sub test_module {
 
     $duk->eval('var ape3 = require("ape");');
 
-    # This will not work because typeof will never return function
-    # ./test 'var ape = require("ape"); assert(typeof ape.module.require === "function", "module.require()");'
-    # is($duk->typeof('ape3.module.require'), "function", "module.require()");
-    $duk->eval('var ape_type = typeof ape3.module.require');
-    is($duk->get('ape_type'), "function", "module.require is a function");
+    is($duk->typeof('ape3.module.require'), "function", "module.require is a function");
 
     my $a30 = $duk->get('ape3');
     my $a31 = $duk->get('ape3.module.exports');
