@@ -4,7 +4,7 @@
 
 static duk_ret_t perl_caller(duk_context* ctx);
 
-SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
+static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
 {
     SV* ret = &PL_sv_undef; // return undef by default
     switch (duk_get_type(ctx, pos)) {
@@ -39,42 +39,62 @@ SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
                 }
                 duk_pop(ctx); // pop function / null pointer
             } else if (duk_is_array(ctx, pos)) {
-                int array_top = duk_get_length(ctx, pos);
-                AV* values = newAV();
-                int j = 0;
-                for (j = 0; j < array_top; ++j) {
-                    if (!duk_get_prop_index(ctx, pos, j)) {
-                        continue; // index doesn't exist => end of array
-                    }
-                    SV* nested = sv_2mortal(pl_duk_to_perl(aTHX_ ctx, -1));
-                    duk_pop(ctx); // value in current pos
-                    if (!nested) {
-                        croak("Could not create Perl SV for array\n");
-                    }
-                    if (av_store(values, j, nested)) {
-                        SvREFCNT_inc(nested);
-                    }
-                }
-                ret = newRV_noinc((SV*) values);
-            } else if (duk_is_object(ctx, pos)) {
-                HV* values = newHV();
-                duk_enum(ctx, pos, 0);
-                while (duk_next(ctx, -1, 1)) { // get key and value
-                    duk_size_t klen = 0;
-                    const char* kstr = duk_get_lstring(ctx, -2, &klen);
-                    SV* nested = sv_2mortal(pl_duk_to_perl(aTHX_ ctx, -1));
-                    duk_pop_2(ctx); // key and value
-                    if (!nested) {
-                        croak("Could not create Perl SV for hash\n");
-                    }
-                    if (hv_store(values, kstr, -klen, nested, 0)) {
-                        SvREFCNT_inc(nested);
+                void* ptr = duk_get_heapptr(ctx, pos);
+                char kstr[100];
+                int klen = sprintf(kstr, "%p", ptr);
+                SV** answer = hv_fetch(seen, kstr, klen, 0);
+                if (answer) {
+                    // TODO: weaken reference?
+                    ret = newRV(*answer);
+                } else {
+                    AV* values = newAV();
+                    hv_store(seen, kstr, klen, (SV*) values, 0);
+                    ret = newRV((SV*) values);
+
+                    int array_top = duk_get_length(ctx, pos);
+                    int j = 0;
+                    for (j = 0; j < array_top; ++j) {
+                        if (!duk_get_prop_index(ctx, pos, j)) {
+                            continue; // index doesn't exist => end of array
+                        }
+                        SV* nested = sv_2mortal(pl_duk_to_perl_impl(aTHX_ ctx, -1, seen));
+                        duk_pop(ctx); // value in current pos
+                        if (!nested) {
+                            croak("Could not create Perl SV for array\n");
+                        }
+                        if (av_store(values, j, nested)) {
+                            SvREFCNT_inc(nested);
+                        }
                     }
                 }
-                duk_pop(ctx);  // iterator
-                ret = newRV_noinc((SV*) values);
-            } else {
-                croak("JS object with an unrecognized type\n");
+            } else { // if (duk_is_object(ctx, pos)) {
+                void* ptr = duk_get_heapptr(ctx, pos);
+                char kstr[100];
+                int klen = sprintf(kstr, "%p", ptr);
+                SV** answer = hv_fetch(seen, kstr, klen, 0);
+                if (answer) {
+                    // TODO: weaken reference?
+                    ret = newRV(*answer);
+                } else {
+                    HV* values = newHV();
+                    hv_store(seen, kstr, klen, (SV*) values, 0);
+                    ret = newRV((SV*) values);
+
+                    duk_enum(ctx, pos, 0);
+                    while (duk_next(ctx, -1, 1)) { // get key and value
+                        duk_size_t klen = 0;
+                        const char* kstr = duk_get_lstring(ctx, -2, &klen);
+                        SV* nested = sv_2mortal(pl_duk_to_perl_impl(aTHX_ ctx, -1, seen));
+                        duk_pop_2(ctx); // key and value
+                        if (!nested) {
+                            croak("Could not create Perl SV for hash\n");
+                        }
+                        if (hv_store(values, kstr, -klen, nested, 0)) {
+                            SvREFCNT_inc(nested);
+                        }
+                    }
+                    duk_pop(ctx);  // iterator
+                }
             }
             break;
         }
@@ -97,7 +117,7 @@ SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
     return ret;
 }
 
-int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
+static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
 {
     int ret = 1;
     if (!SvOK(value)) {
@@ -116,57 +136,81 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
         SV* ref = SvRV(value);
         if (SvTYPE(ref) == SVt_PVAV) {
             AV* values = (AV*) ref;
-            duk_idx_t array_pos = duk_push_array(ctx);
-            int array_top = av_top_index(values);
-            int count = 0;
-            int j = 0;
-            for (j = 0; j <= array_top; ++j) { // yes, [0, array_top]
-                SV** elem = av_fetch(values, j, 0);
-                if (!elem || !*elem) {
-                    break; // could not get element
+            char kstr[100];
+            int klen = sprintf(kstr, "%p", values);
+            SV** answer = hv_fetch(seen, kstr, klen, 0);
+            if (answer) {
+                void* ptr = (void*) SvUV(*answer);
+                duk_push_heapptr(ctx, ptr);
+            } else {
+                duk_idx_t array_pos = duk_push_array(ctx);
+                void* ptr = duk_get_heapptr(ctx, array_pos);
+                SV* uptr = newSVuv(PTR2UV(ptr));
+                hv_store(seen, kstr, klen, uptr, 0);
+
+                int array_top = av_top_index(values);
+                int count = 0;
+                int j = 0;
+                for (j = 0; j <= array_top; ++j) { // yes, [0, array_top]
+                    SV** elem = av_fetch(values, j, 0);
+                    if (!elem || !*elem) {
+                        break; // could not get element
+                    }
+                    if (!pl_perl_to_duk_impl(aTHX_ *elem, ctx, seen)) {
+                        croak("Could not create JS element for array\n");
+                    }
+                    if (!duk_put_prop_index(ctx, array_pos, count)) {
+                        croak("Could not push JS element for array\n");
+                    }
+                    ++count;
                 }
-                if (!pl_perl_to_duk(aTHX_ *elem, ctx)) {
-                    croak("Could not create JS element for array\n");
-                }
-                if (!duk_put_prop_index(ctx, array_pos, count)) {
-                    croak("Could not push JS element for array\n");
-                }
-                ++count;
             }
         } else if (SvTYPE(ref) == SVt_PVHV) {
             HV* values = (HV*) ref;
-            duk_idx_t hash_pos = duk_push_object(ctx);
-            hv_iterinit(values);
-            while (1) {
-                SV* key = 0;
-                SV* value = 0;
-                char* kstr = 0;
-                STRLEN klen = 0;
-                HE* entry = hv_iternext(values);
-                if (!entry) {
-                    break; // no more hash keys
-                }
-                key = hv_iterkeysv(entry);
-                if (!key) {
-                    continue; // invalid key
-                }
-                SvUTF8_on(key); // yes, always
-                kstr = SvPV(key, klen);
-                if (!kstr) {
-                    continue; // invalid key
-                }
+            char kstr[100];
+            int klen = sprintf(kstr, "%p", values);
+            SV** answer = hv_fetch(seen, kstr, klen, 0);
+            if (answer) {
+                void* ptr = (void*) SvUV(*answer);
+                duk_push_heapptr(ctx, ptr);
+            } else {
+                duk_idx_t hash_pos = duk_push_object(ctx);
+                void* ptr = duk_get_heapptr(ctx, hash_pos);
+                SV* uptr = newSVuv(PTR2UV(ptr));
+                hv_store(seen, kstr, klen, uptr, 0);
 
-                value = hv_iterval(values, entry);
-                if (!value) {
-                    continue; // invalid value
-                }
-                SvUTF8_on(value); // yes, always
+                hv_iterinit(values);
+                while (1) {
+                    SV* key = 0;
+                    SV* value = 0;
+                    char* kstr = 0;
+                    STRLEN klen = 0;
+                    HE* entry = hv_iternext(values);
+                    if (!entry) {
+                        break; // no more hash keys
+                    }
+                    key = hv_iterkeysv(entry);
+                    if (!key) {
+                        continue; // invalid key
+                    }
+                    SvUTF8_on(key); // yes, always
+                    kstr = SvPV(key, klen);
+                    if (!kstr) {
+                        continue; // invalid key
+                    }
 
-                if (!pl_perl_to_duk(aTHX_ value, ctx)) {
-                    croak("Could not create JS element for hash\n");
-                }
-                if (! duk_put_prop_lstring(ctx, hash_pos, kstr, klen)) {
-                    croak("Could not push JS element for hash\n");
+                    value = hv_iterval(values, entry);
+                    if (!value) {
+                        continue; // invalid value
+                    }
+                    SvUTF8_on(value); // yes, always
+
+                    if (!pl_perl_to_duk_impl(aTHX_ value, ctx, seen)) {
+                        croak("Could not create JS element for hash\n");
+                    }
+                    if (! duk_put_prop_lstring(ctx, hash_pos, kstr, klen)) {
+                        croak("Could not push JS element for hash\n");
+                    }
                 }
             }
         } else if (SvTYPE(ref) == SVt_PVCV) {
@@ -189,6 +233,22 @@ int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
         croak("Don't know how to deal with an undetermined Perl object\n");
         ret = 0;
     }
+    return ret;
+}
+
+SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
+{
+    HV* seen = newHV();
+    SV* ret = pl_duk_to_perl_impl(aTHX_ ctx, pos, seen);
+    hv_undef(seen);
+    return ret;
+}
+
+int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
+{
+    HV* seen = newHV();
+    int ret = pl_perl_to_duk_impl(aTHX_ value, ctx, seen);
+    hv_undef(seen);
     return ret;
 }
 
