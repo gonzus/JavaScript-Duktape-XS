@@ -226,6 +226,9 @@ of JavaScript code:
 
     setTimeout(function() { X(); }, 0);
 
+This function requires that you first evaluate the JavaScrit file
+C<c_eventloop.js>, which is part of the distribution.
+
 =head2 get_stats
 
 Return a hashref with the statistics gathered as a result of creating the XS
