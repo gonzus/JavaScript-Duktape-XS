@@ -191,37 +191,8 @@ set(Duk* duk, const char* name, SV* value)
 
 SV*
 eval(Duk* duk, const char* js, const char* file = 0)
-  PREINIT:
-    duk_context* ctx = 0;
-    Stats stats;
-    duk_uint_t flags = 0;
-    duk_int_t rc = 0;
   CODE:
-    ctx = duk->ctx;
-
-    /* flags |= DUK_COMPILE_STRICT; */
-
-    pl_stats_start(aTHX_ duk, &stats);
-    if (!file) {
-        rc = duk_pcompile_string(ctx, flags, js);
-    }
-    else {
-        duk_push_string(ctx, file);
-        rc = duk_pcompile_string_filename(ctx, flags, js);
-    }
-    pl_stats_stop(aTHX_ duk, &stats, "compile");
-
-    if (rc != DUK_EXEC_SUCCESS) {
-        croak("JS could not compile code: %s\n", duk_safe_to_string(ctx, -1));
-    }
-
-    pl_stats_start(aTHX_ duk, &stats);
-    rc = duk_pcall(ctx, 0);
-    pl_stats_stop(aTHX_ duk, &stats, "run");
-    check_duktape_call_for_errors(rc, ctx);
-
-    RETVAL = pl_duk_to_perl(aTHX_ ctx, -1);
-    duk_pop(ctx);
+    RETVAL = pl_eval(aTHX_ duk, js, file);
   OUTPUT: RETVAL
 
 SV*
