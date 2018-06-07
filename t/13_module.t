@@ -7,39 +7,37 @@ use Test::More;
 use JavaScript::Duktape::XS;
 
 sub _module_resolve {
-    my ($module_id, $parent_id) = @_;
+    my ($requested_id, $parent_id) = @_;
 
-    my $resolved = sprintf("%s.js", $module_id);
-    # printf STDERR ("resolve_cb id='%s', parent-id='%s', resolve-to='%s'\n", $module_id, $parent_id, $resolved);
-    return $resolved;
+    my $module_name = sprintf("%s.js", $requested_id);
+    # printf STDERR ("resolve_cb requested-id='%s', parent-id='%s', resolve-to='%s'\n", $requested_id, $parent_id, $module_name);
+    return $module_name;
 
 }
 
 sub _module_load {
-    my ($module_id, $exports, $module, $filename) = @_;
+    my ($module_name, $exports, $module) = @_;
 
-    # printf STDERR ("load_cb id='%s', filename='%s'\n", $module_id, $filename);
+    # printf STDERR ("load_cb module_name='%s'\n", $module_name);
 
     my $source;
-    if ($module_id eq 'pig.js') {
-        $source = sprintf("module.exports = 'you\\'re about to get eaten by %s';", $module_id);
+    if ($module_name eq 'pig.js') {
+        $source = sprintf("module.exports = 'you\\'re about to get eaten by %s';", $module_name);
     }
-    elsif ($module_id eq 'cow.js') {
+    elsif ($module_name eq 'cow.js') {
         $source = "module.exports = require('pig');";
     }
-    elsif ($module_id eq 'ape.js') {
+    elsif ($module_name eq 'ape.js') {
         $source = "module.exports = { module: module, __filename: __filename, wasLoaded: module.loaded };";
     }
-    elsif ($module_id eq 'badger.js') {
+    elsif ($module_name eq 'badger.js') {
         $source = "exports.foo = 123; exports.bar = 234;";
     }
-    elsif ($module_id eq 'comment.js') {
+    elsif ($module_name eq 'comment.js') {
         $source = "exports.foo = 123; exports.bar = 234; // comment";
     }
-    elsif ($module_id eq 'shebang.js') {
+    elsif ($module_name eq 'shebang.js') {
         $source = "#!ignored\nexports.foo = 123; exports.bar = 234;";
-    # } else {
-    #     (void) duk_type_error(ctx, "cannot find module: %s", module_id);
     }
 
     return $source;
