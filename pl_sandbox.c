@@ -3,12 +3,19 @@
 #include "pl_util.h"
 #include "pl_sandbox.h"
 
-#define SANDBOX_DEBUG 0
+#define SANDBOX_DEBUG_MEMORY   0
+#define SANDBOX_DEBUG_RUNTIME  0
 
-#if defined(SANDBOX_DEBUG) && SANDBOX_DEBUG > 0
-#define SANDBOX_DUMP(duk) do { sandbox_dump_memstate(duk); } while (0)
+#if defined(SANDBOX_DEBUG_MEMORY) && SANDBOX_DEBUG_MEMORY > 0
+#define SANDBOX_DUMP_MEMORY(duk) do { sandbox_dump_memstate(duk); } while (0)
 #else
-#define SANDBOX_DUMP(duk) do {} while (0)
+#define SANDBOX_DUMP_MEMORY(duk) do {} while (0)
+#endif
+
+#if defined(SANDBOX_DEBUG_RUNTIME) && SANDBOX_DEBUG_RUNTIME > 0
+#define SANDBOX_DUMP_RUNTIME(duk) do { sandbox_dump_timestate(duk); } while (0)
+#else
+#define SANDBOX_DUMP_RUNTIME(duk) do {} while (0)
 #endif
 
 /*
@@ -35,12 +42,21 @@ static void sandbox_error(size_t size, const char* func)
                   (long) size, func);
 }
 
-#if defined(SANDBOX_DEBUG) && SANDBOX_DEBUG > 0
+#if defined(SANDBOX_DEBUG_MEMORY) && SANDBOX_DEBUG_MEMORY > 0
 static void sandbox_dump_memstate(Duk* duk)
 {
     dTHX;
     PerlIO_printf(PerlIO_stderr(), "duktape total allocated: %ld\n",
-                  (long) duk->total_allocated);
+                  (long) duk->total_allocated_bytes);
+}
+#endif
+
+#if defined(SANDBOX_DEBUG_RUNTIME) && SANDBOX_DEBUG_RUNTIME > 0
+static void sandbox_dump_timestate(Duk* duk)
+{
+    dTHX;
+    PerlIO_printf(PerlIO_stderr(), "duktape timeout has happened, limit is %f us\n",
+                  duk->max_timeout_us);
 }
 #endif
 
@@ -54,7 +70,8 @@ void* pl_sandbox_alloc(void* udata, duk_size_t size)
         return NULL;
     }
 
-    if (duk->total_allocated + size > duk->max_allocated) {
+    if (duk->max_allocated_bytes > 0 &&
+        duk->total_allocated_bytes + size > duk->max_allocated_bytes) {
         sandbox_error(size, "pl_sandbox_alloc");
         return NULL;
     }
@@ -64,8 +81,8 @@ void* pl_sandbox_alloc(void* udata, duk_size_t size)
         return NULL;
     }
     hdr->u.sz = size;
-    duk->total_allocated += size;
-    SANDBOX_DUMP(duk);
+    duk->total_allocated_bytes += size;
+    SANDBOX_DUMP_MEMORY(duk);
     return (void*) (hdr + 1);
 }
 
@@ -82,12 +99,13 @@ void* pl_sandbox_realloc(void* udata, void* ptr, duk_size_t size)
         old_size = hdr->u.sz;
 
         if (size == 0) {
-            duk->total_allocated -= old_size;
+            duk->total_allocated_bytes -= old_size;
             free((void*) hdr);
-            SANDBOX_DUMP(duk);
+            SANDBOX_DUMP_MEMORY(duk);
             return NULL;
         } else {
-            if (duk->total_allocated - old_size + size > duk->max_allocated) {
+            if (duk->max_allocated_bytes > 0 &&
+                duk->total_allocated_bytes - old_size + size > duk->max_allocated_bytes) {
                 sandbox_error(size, "pl_sandbox_realloc");
                 return NULL;
             }
@@ -97,16 +115,17 @@ void* pl_sandbox_realloc(void* udata, void* ptr, duk_size_t size)
                 return NULL;
             }
             hdr = (alloc_hdr*) t;
-            duk->total_allocated -= old_size;
-            duk->total_allocated += size;
+            duk->total_allocated_bytes -= old_size;
+            duk->total_allocated_bytes += size;
             hdr->u.sz = size;
-            SANDBOX_DUMP(duk);
+            SANDBOX_DUMP_MEMORY(duk);
             return (void*) (hdr + 1);
         }
     } else if (size == 0) {
         return NULL;
     } else {
-        if (duk->total_allocated + size > duk->max_allocated) {
+        if (duk->max_allocated_bytes > 0 &&
+            duk->total_allocated_bytes + size > duk->max_allocated_bytes) {
             sandbox_error(size, "pl_sandbox_realloc");
             return NULL;
         }
@@ -116,8 +135,8 @@ void* pl_sandbox_realloc(void* udata, void* ptr, duk_size_t size)
             return NULL;
         }
         hdr->u.sz = size;
-        duk->total_allocated += size;
-        SANDBOX_DUMP(duk);
+        duk->total_allocated_bytes += size;
+        SANDBOX_DUMP_MEMORY(duk);
         return (void*) (hdr + 1);
     }
 }
@@ -132,7 +151,24 @@ void pl_sandbox_free(void* udata, void* ptr)
         return;
     }
     hdr = (alloc_hdr*) (((char*) ptr) - sizeof(alloc_hdr));
-    duk->total_allocated -= hdr->u.sz;
+    duk->total_allocated_bytes -= hdr->u.sz;
     free((void*) hdr);
-    SANDBOX_DUMP(duk);
+    SANDBOX_DUMP_MEMORY(duk);
+}
+
+int pl_exec_timeout(void *udata)
+{
+    Duk* duk = (Duk*) udata;
+    double elapsed_us = 0;
+    if (duk->max_timeout_us <= 0) {
+        return 0;
+    }
+
+    elapsed_us = now_us() - duk->eval_start_us;
+    if (elapsed_us <= duk->max_timeout_us) {
+        return 0;
+    }
+
+    SANDBOX_DUMP_RUNTIME(duk);
+    return 1;
 }
