@@ -16,7 +16,11 @@
 #include "pl_eventloop.h"
 #include "pl_console.h"
 #include "pl_native.h"
+#include "pl_sandbox.h"
 #include "pl_util.h"
+
+#define MAX_MEMORY_MINIMUM (128 * 1024)  /* 128kB */
+#define MAX_MEMORY_DEFAULT (256 * 1024)  /* 256kB */
 
 static void duk_fatal_error_handler(void* data, const char* msg)
 {
@@ -30,15 +34,11 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
 {
     Duk* duk = (Duk*) malloc(sizeof(Duk));
     memset(duk, 0, sizeof(Duk));
+    duk->max_allocated = MAX_MEMORY_DEFAULT;
 
     duk->pagesize = getpagesize();
     duk->stats = newHV();
     duk->msgs = newHV();
-
-    duk->ctx = duk_create_heap(0, 0, 0, 0, duk_fatal_error_handler);
-    if (!duk->ctx) {
-        croak("Could not create duk heap\n");
-    }
 
     if (opt) {
         hv_iterinit(opt);
@@ -66,8 +66,18 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
                 duk->flags |= SvTRUE(value) ? DUK_OPT_FLAG_SAVE_MESSAGES : 0;
                 continue;
             }
+            if (memcmp(kstr, DUK_OPT_NAME_MAX_MEMORY, klen) == 0) {
+                int param = SvIV(value);
+                duk->max_allocated = param > MAX_MEMORY_MINIMUM ? param : MAX_MEMORY_MINIMUM;
+                continue;
+            }
             croak("Unknown option %*.*s\n", (int) klen, (int) klen, kstr);
         }
+    }
+
+    duk->ctx = duk_create_heap(pl_sandbox_alloc, pl_sandbox_realloc, pl_sandbox_free, duk, duk_fatal_error_handler);
+    if (!duk->ctx) {
+        croak("Could not create duk heap\n");
     }
 
     // register a bunch of native functions

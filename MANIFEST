@@ -21,6 +21,8 @@ pl_module.c
 pl_module.h
 pl_native.c
 pl_native.h
+pl_sandbox.c
+pl_sandbox.h
 pl_stats.c
 pl_stats.h
 pl_util.c
@@ -48,4 +50,5 @@ t/10_run_gc.t
 t/11_typeof.t
 t/12_instanceof.t
 t/13_module.t
+t/14_cyclic.t
 typemap
