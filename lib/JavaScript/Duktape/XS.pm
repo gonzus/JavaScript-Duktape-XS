@@ -101,7 +101,12 @@ Version 0.000061
 
     my $duk = JavaScript::Duktape::XS->new();
 
-    my $options = { gather_stats => 1, save_messages => 1 };
+    my $options = {
+        gather_stats     => 1,
+        save_messages    => 1,
+        max_memory_bytes => 256*1024,
+        max_timeout_us   => 2*1_000_000,
+    };
     my $duk = JavaScript::Duktape::XS->new($options);
 
     $duk->set('global_name', [1, 2, 3]);
@@ -164,6 +169,16 @@ Any message printed to the JavaScript console will instead be saved in a
 hashref, where each key represents a "target" for the message (for example,
 C<stdout> or C<stderr>).  You can then retrieve the messages by calling
 C<get_msgs>.
+
+=head3 max_memory_bytes
+
+Limit the memory dynamically allocated to this many bytes.  If this option is
+not used, there is no limit in place.
+
+=head3 max_timeout_us
+
+Limit the execution runtime of any single JavaScript call to this many
+microseconds.  If this option is not used, there is no limit in place.
 
 =head2 set
 
