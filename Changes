@@ -1,3 +1,6 @@
+0.000063    2018-06-08
+            * Embed all required JS code into the module.
+
 0.000062    2018-06-07
             * Add support for sandboxing: when creating the duktape object, you
               can now specify limits for how much memory will be allocated, and
