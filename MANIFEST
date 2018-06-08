@@ -6,7 +6,6 @@ duktape.c
 duktape.h
 c_eventloop.c
 c_eventloop.h
-c_eventloop.js
 duk_console.c
 duk_console.h
 duk_module_node.c
@@ -17,6 +16,8 @@ pl_duk.c
 pl_duk.h
 pl_eventloop.c
 pl_eventloop.h
+pl_inlined.c
+pl_inlined.h
 pl_module.c
 pl_module.h
 pl_native.c
@@ -29,6 +30,7 @@ pl_util.c
 pl_util.h
 lib/JavaScript/Duktape/XS.pm
 bin/duktape-repl
+bin/file2c.pl
 bin/release.sh
 LICENSE
 MANIFEST

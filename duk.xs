@@ -16,6 +16,7 @@
 #include "pl_eventloop.h"
 #include "pl_console.h"
 #include "pl_native.h"
+#include "pl_inlined.h"
 #include "pl_sandbox.h"
 #include "pl_util.h"
 
@@ -103,6 +104,9 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
 
     // register event loop dispatcher
     pl_register_eventloop(duk);
+
+    // inline a bunch of JS functions
+    pl_register_inlined_functions(duk);
 
     // initialize console object
     pl_console_init(duk);
