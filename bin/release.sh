@@ -64,6 +64,9 @@ cat Makefile.PL | awk '{if ($0 ~ /},/) {p=0; next;} if (p) { print; } if ($0 ~ /
 diff /tmp/release_$$_a /tmp/release_$$_b >>$errors
 rm -f /tmp/release_$$_a /tmp/release_$$_b
 
+echo "== Checking suspicious declarations ==" >>$errors
+git grep -E '(for|while|if|do)[ \t]*\((int|char|long|unsigned|float|double|size_t) ' >>$errors
+
 echo
 echo "== Ready to upload $name.tar.gz to CPAN =="
 
