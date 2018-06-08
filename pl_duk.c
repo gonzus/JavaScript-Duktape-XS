@@ -51,9 +51,12 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
                 } else {
                     int array_top = 0;
                     int j = 0;
-                    AV* values = newAV();
-                    hv_store(seen, kstr, klen, (SV*) values, 0);
-                    ret = newRV((SV*) values);
+                    AV* values_array = newAV();
+                    SV* values = sv_2mortal((SV*) values_array);
+                    if (hv_store(seen, kstr, klen, values, 0)) {
+                        SvREFCNT_inc(values);
+                    }
+                    ret = newRV(values);
 
                     array_top = duk_get_length(ctx, pos);
                     for (j = 0; j < array_top; ++j) {
@@ -66,7 +69,7 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
                         if (!nested) {
                             croak("Could not create Perl SV for array\n");
                         }
-                        if (av_store(values, j, nested)) {
+                        if (av_store(values_array, j, nested)) {
                             SvREFCNT_inc(nested);
                         }
                     }
@@ -80,9 +83,12 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
                     /* TODO: weaken reference? */
                     ret = newRV(*answer);
                 } else {
-                    HV* values = newHV();
-                    hv_store(seen, kstr, klen, (SV*) values, 0);
-                    ret = newRV((SV*) values);
+                    HV* values_hash = newHV();
+                    SV* values = sv_2mortal((SV*) values_hash);
+                    if (hv_store(seen, kstr, klen, values, 0)) {
+                        SvREFCNT_inc(values);
+                    }
+                    ret = newRV(values);
 
                     duk_enum(ctx, pos, 0);
                     while (duk_next(ctx, -1, 1)) { /* get key and value */
@@ -93,7 +99,7 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
                         if (!nested) {
                             croak("Could not create Perl SV for hash\n");
                         }
-                        if (hv_store(values, kstr, -klen, nested, 0)) {
+                        if (hv_store(values_hash, kstr, -klen, nested, 0)) {
                             SvREFCNT_inc(nested);
                         }
                     }
@@ -152,8 +158,10 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
                 int j = 0;
                 duk_idx_t array_pos = duk_push_array(ctx);
                 void* ptr = duk_get_heapptr(ctx, array_pos);
-                SV* uptr = newSVuv(PTR2UV(ptr));
-                hv_store(seen, kstr, klen, uptr, 0);
+                SV* uptr = sv_2mortal(newSVuv(PTR2UV(ptr)));
+                if (hv_store(seen, kstr, klen, uptr, 0)) {
+                    SvREFCNT_inc(uptr);
+                }
 
                 array_top = av_top_index(values);
                 for (j = 0; j <= array_top; ++j) { /* yes, [0, array_top] */
@@ -181,8 +189,10 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
             } else {
                 duk_idx_t hash_pos = duk_push_object(ctx);
                 void* ptr = duk_get_heapptr(ctx, hash_pos);
-                SV* uptr = newSVuv(PTR2UV(ptr));
-                hv_store(seen, kstr, klen, uptr, 0);
+                SV* uptr = sv_2mortal(newSVuv(PTR2UV(ptr)));
+                if (hv_store(seen, kstr, klen, uptr, 0)) {
+                    SvREFCNT_inc(uptr);
+                }
 
                 hv_iterinit(values);
                 while (1) {

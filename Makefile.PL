@@ -54,7 +54,6 @@ sub cflags {
         comment
     /;
     $self->{CCFLAGS} .= " -W$_" for @warning_flags_always;
-    $self->{CCFLAGS} .= " --std=c89";
 
     foreach (@cflags) {
         $_ = "CCFLAGS = $self->{CCFLAGS}" if /^CCFLAGS/;
