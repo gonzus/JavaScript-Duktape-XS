@@ -212,7 +212,8 @@ slot. Returns a boolean and avoids all JavaScript to Perl value conversions.
 
 Returns a string with the JavaScript type of a given variable.  Possible
 returned values are C<undefined>, C<null>, C<boolean>, C<number>, C<string>,
-C<object>, C<pointer>, C<buffer>, C<lightfunc>.
+C<array>, C<symbol>, C<function>, C<c_function>, C<lightfunc>, C<thread>,
+C<object>, C<pointer>, C<buffer>.
 
 This method returns C<null> for null values, which fixes the long-standing
 JavaScript bug of returning C<object> for null values.
