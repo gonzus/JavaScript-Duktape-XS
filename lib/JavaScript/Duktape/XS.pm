@@ -1,5 +1,4 @@
 package JavaScript::Duktape::XS;
-
 use strict;
 use warnings;
 use parent 'Exporter';
@@ -81,7 +80,6 @@ sub parse_js_stacktrace {
 }
 
 1;
-
 __END__
 
 =pod
