@@ -119,7 +119,7 @@ sub test_roundtrip {
         my $js_name = "js_$name";
         $test_name = $name;
         $expected_args = $args;
-        my $got_eval = $vm->eval("$js_name = perl_test.apply(this, $name)");
+        my $got_eval = $vm->eval("$js_name = perl_test.apply(null, $name)");
         is_deeply($got_eval, $args, "calling perl_test() works for $name");
 
         my $got_get = $vm->get($js_name);
