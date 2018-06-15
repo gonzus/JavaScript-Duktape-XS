@@ -4,25 +4,29 @@ use warnings;
 use Data::Dumper;
 use Time::HiRes;
 use Test::More;
-use JavaScript::Duktape::XS;
+
+my $CLASS = 'JavaScript::Duktape::XS';
 
 sub test_const {
-    my $duk = JavaScript::Duktape::XS->new();
-    ok($duk, "created JavaScript::Duktape::XS object");
+    my $vm = $CLASS->new();
+    ok($vm, "created $CLASS object");
+
     my $num = 42;
     my $got;
 
-    $got = $duk->eval("const number = $num; number;");
+    $got = $vm->eval("const number = $num; number;");
     is($got, $num, "compiled const");
-    $got = $duk->get('number');
+    $got = $vm->get('number');
     is($got, $num, "and const has correct value");
 
-    # $got = $duk->eval('const webpack = (options, callback) => { const gonzo = 11; };');
-    $got = $duk->eval('const webpack = function(options, callback) { const gonzo = 11; }; number');
+    # $got = $vm->eval('const webpack = (options, callback) => { const gonzo = 11; };');
+    $got = $vm->eval('const webpack = function(options, callback) { const gonzo = 11; }; number');
     is($got, $num, "compiled funny");
 }
 
 sub main {
+    use_ok($CLASS);
+
     test_const();
     done_testing;
     return 0;
