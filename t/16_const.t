@@ -11,16 +11,17 @@ sub test_const {
     my $vm = $CLASS->new();
     ok($vm, "created $CLASS object");
 
+    my $name = 'my_var';
     my $num = 42;
     my $got;
 
-    $got = $vm->eval("const number = $num; number;");
+    $got = $vm->eval("const $name = $num; $name;");
     is($got, $num, "compiled const");
-    $got = $vm->get('number');
+    $got = $vm->get($name);
     is($got, $num, "and const has correct value");
 
     # $got = $vm->eval('const webpack = (options, callback) => { const gonzo = 11; };');
-    $got = $vm->eval('const webpack = function(options, callback) { const gonzo = 11; }; number');
+    $got = $vm->eval("const webpack = function(options, callback) { const gonzo = 11; }; $name");
     is($got, $num, "compiled funny");
 }
 
