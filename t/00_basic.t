@@ -8,8 +8,6 @@ use Test::Output;
 my $CLASS = 'JavaScript::Duktape::XS';
 
 sub test_set_get_and_exists {
-    use_ok($CLASS);
-
     my $vm = $CLASS->new();
     ok($vm, "created $CLASS object");
 
@@ -128,6 +126,8 @@ sub test_roundtrip {
 }
 
 sub main {
+    use_ok($CLASS);
+
     test_set_get_and_exists();
     test_eval();
     test_roundtrip();

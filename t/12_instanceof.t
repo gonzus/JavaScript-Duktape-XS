@@ -3,7 +3,8 @@ use warnings;
 
 use Ref::Util qw/ is_scalarref /;
 use Test::More;
-use JavaScript::Duktape::XS;
+
+my $CLASS = 'JavaScript::Duktape::XS';
 
 sub test_instanceof {
     my $js = <<JS;
@@ -19,20 +20,23 @@ JS
         'auto'       => [ 'Car', 'Object' ],
         'auto.older' => [ 'Car', 'Object' ],
     );
-    my $duk = JavaScript::Duktape::XS->new();
-    ok($duk, "created JavaScript::Duktape::XS object");
-    $duk->eval($js);
+    my $vm = $CLASS->new();
+    ok($vm, "created $CLASS object");
+
+    $vm->eval($js);
 
     foreach my $name (sort keys %data) {
         my $classes = $data{$name};
         foreach my $class (@$classes) {
-            my $got = $duk->instanceof($name, $class);
+            my $got = $vm->instanceof($name, $class);
             ok($got, "$name is a $class");
         }
     }
 }
 
 sub main {
+    use_ok($CLASS);
+
     test_instanceof();
     done_testing;
 

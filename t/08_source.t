@@ -5,7 +5,8 @@ use Data::Dumper;
 use Path::Tiny;
 use Test::More;
 use Ref::Util qw/ is_arrayref /;
-use JavaScript::Duktape::XS;
+
+my $CLASS = 'JavaScript::Duktape::XS';
 
 sub load_js_file {
     my ($file) = @_;
@@ -51,8 +52,8 @@ function a() {
 }
 EOS
 
-    my $duk = JavaScript::Duktape::XS->new({save_messages => 1});
-    ok($duk, "created JavaScript::Duktape::XS object that saves messages");
+    my $vm = $CLASS->new({save_messages => 1});
+    ok($vm, "created $CLASS object that saves messages");
 
     my @js_files;
     my $js_file = save_tmp_file($js_code);
@@ -61,7 +62,7 @@ EOS
 
     foreach my $js_file (@js_files) {
         my $code = load_js_file($js_file);
-        $duk->eval($code, $js_file);
+        $vm->eval($code, $js_file);
         ok(1, "loaded file '$js_file'");
     }
 
@@ -81,9 +82,9 @@ EOS
         my $method = $code->{method};
         next unless $method;
 
-        $duk->reset_msgs();
-        $duk->$method(@{ $code->{args} });
-        my $msgs = $duk->get_msgs();
+        $vm->reset_msgs();
+        $vm->$method(@{ $code->{args} });
+        my $msgs = $vm->get_msgs();
         # print STDERR Dumper($msgs);
 
         ok($msgs, "got messages from JS for $type execution");
@@ -92,7 +93,7 @@ EOS
         ok($msgs->{stderr}, "got error messages from JS");
         next unless $msgs->{stderr};
 
-        my $contexts = $duk->parse_js_stacktrace($msgs->{stderr}, 2);
+        my $contexts = $vm->parse_js_stacktrace($msgs->{stderr}, 2);
         ok($contexts, "got parsed stacktrace");
         next unless $contexts;
 
@@ -118,6 +119,8 @@ EOS
 }
 
 sub main {
+    use_ok($CLASS);
+
     test_line_numbers();
     done_testing;
     return 0;
