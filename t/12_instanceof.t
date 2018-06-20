@@ -1,7 +1,6 @@
 use strict;
 use warnings;
 
-use Ref::Util qw/ is_scalarref /;
 use Test::More;
 
 my $CLASS = 'JavaScript::Duktape::XS';
@@ -13,12 +12,15 @@ function Car(make, model, year) {
   this.model = model;
   this.year = year;
 }
-var auto = new Car('Honda', 'Accord', 1998);
-auto.older = new Car('Ford', 'T', 1945);
+
+var honda = new Car('Honda', 'Accord', 1998);
+honda.older = new Car('Ford', 'T', 1945);
+var empty = [];
 JS
     my %data = (
-        'auto'       => [ 'Car', 'Object' ],
-        'auto.older' => [ 'Car', 'Object' ],
+        'honda'       => [ 'Car', 'Object' ],
+        'honda.older' => [ 'Car', 'Object' ],
+        'empty'       => [ 'Array', 'Object' ],
     );
     my $vm = $CLASS->new();
     ok($vm, "created $CLASS object");
