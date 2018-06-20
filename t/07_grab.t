@@ -38,16 +38,18 @@ sub test_capture {
         }
         if ($save) {
             my $msgs = $vm->get_msgs();
+            # print Dumper($msgs);
             @got_out = map +( trim $_ ), @{ $msgs->{stdout} } if exists $msgs->{stdout};
             @got_err = @{ $msgs->{stderr} } if exists $msgs->{stderr};
-            # printf STDERR ("MESSAGES [%s] [%s]\n", join(',', @got_out), join(',', @got_err));
         }
+        # printf STDERR ("MESSAGES [%s] [%s]\n", join(',', @got_out), join(',', @got_err));
+        # printf STDERR ("EXPECTED [%s]\n", join(',', @expected));
 
         my $label = $save ? "captured" : "found";
         is_deeply(\@got_out, \@expected, "$label $times messages sent to stdout from JS");
 
         my $got_err = join("\n", map +( trim $_ ), @got_err);
-        like($got_err, qr/undefined/, "$label messages sent to stderr from JS");
+        like($got_err, qr/(not |un)defined/, "$label messages sent to stderr from JS");
     }
 }
 
