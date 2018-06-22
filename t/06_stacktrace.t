@@ -21,7 +21,7 @@ sub check_functions {
     my ($type, $err, $file, $funcs) = @_;
 
     foreach my $func (@$funcs) {
-        my $expected = quotemeta("at $func") . '.*' . quotemeta("($file:") . '[0-9]+' . quotemeta(')');
+        my $expected = quotemeta("at $func") . '.*' . quotemeta("($file:") . '[0-9]+(:[0-9]+)?' . quotemeta(')');
         like($err, qr/$expected/, "found function $file:$func in stack trace type $type");
     }
 }
