@@ -67,9 +67,12 @@ sub parse_js_stacktrace {
             $text = trim($text);
             next unless $text;
 
+            # skip any of Duktape's internal functions
+            next if $text =~ m/^\s*at\s*.*internal$/;
+
             $context{message} = $text unless exists $context{message};
 
-            next unless $text =~ m/^\s*at\s*(\S*)\s*\(([^:]*):([0-9]+)(:([0-9]+))?\)\s*$/;
+            next unless $text =~ m/^\s*at\s*(\S*)\s*\(([^:]*):([0-9]+)(:([0-9]+))?\)/;
 
             if ($interesting_files && !exists $interesting_files{$2}) {
                 delete $context{message};

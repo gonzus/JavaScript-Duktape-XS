@@ -58,7 +58,7 @@ EOS
     my @js_files;
     my $js_file = save_tmp_file($js_code);
     push @js_files, $js_file;
-    ok(1, "saved tp tmp file '$js_file'");
+    ok(1, "saved to tmp file '$js_file'");
 
     foreach my $js_file (@js_files) {
         my $code = load_js_file($js_file);
