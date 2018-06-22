@@ -118,10 +118,68 @@ EOS
     }
 }
 
+sub test_multiple_errors {
+    my $js_fmt = <<EOS;
+function f_%d () {
+    setTimeout(function() {
+        throw new Error("error1");
+    }, 0);
+
+    setTimeout(function() {
+        return gonzo.length;
+    }, 0);
+
+    setTimeout(function() {
+        throw new Error("error3");
+    }, 0);
+}
+EOS
+
+    my $vm = $CLASS->new({save_messages => 1});
+    ok($vm, "created $CLASS object that saves messages");
+
+    my $top = 2;
+    my @js_files;
+    foreach my $seq (1..$top) {
+        my $js_code = sprintf($js_fmt, $seq);
+        my $js_file = save_tmp_file($js_code);
+        push @js_files, $js_file;
+    }
+    is(scalar @js_files, $top, "saved $top functions to tmp files");
+
+    my @interesting_files;
+    foreach my $js_file (@js_files) {
+        my $code = load_js_file($js_file);
+        $vm->eval($code, $js_file);
+        ok(1, "loaded file '$js_file'");
+        next if scalar @interesting_files > 0;
+        push @interesting_files, $js_file;
+    }
+
+    $vm->reset_msgs();
+    foreach my $seq (1..$top) {
+        my $js_func = sprintf("f_%d", $seq);
+        $vm->dispatch_function_in_event_loop($js_func);
+    }
+    my $msgs = $vm->get_msgs();
+    # print STDERR Dumper($msgs);
+    ok($msgs, "got messages from JS");
+    next unless $msgs;
+
+    ok($msgs->{stderr}, "got error messages from JS");
+    next unless $msgs->{stderr};
+
+    my $contexts = $vm->parse_js_stacktrace($msgs->{stderr}, 2, \@interesting_files);
+    ok($contexts, "got parsed stacktrace");
+    next unless $contexts;
+    # print STDERR Dumper($contexts);
+}
+
 sub main {
     use_ok($CLASS);
 
     test_line_numbers();
+    test_multiple_errors();
     done_testing;
     return 0;
 }

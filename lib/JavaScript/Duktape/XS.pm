@@ -36,9 +36,10 @@ sub _get_js_source_fragment {
 }
 
 sub parse_js_stacktrace {
-    my ($self, $stacktrace_lines, $desired_frames) = @_;
+    my ($self, $stacktrace_lines, $desired_frames, $interesting_files) = @_;
 
     $desired_frames //= 1;
+    my %interesting_files = map +( $_ => 1 ), @{ $interesting_files // [] };
 
     # @contexts => [ {
     #   message => "undefined variable foo",
@@ -69,6 +70,12 @@ sub parse_js_stacktrace {
             $context{message} = $text unless exists $context{message};
 
             next unless $text =~ m/^\s*at\s*(\S*)\s*\(([^:]*):([0-9]+)(:([0-9]+))?\)\s*$/;
+
+            if ($interesting_files && !exists $interesting_files{$2}) {
+                delete $context{message};
+                last;
+            }
+
             push @{ $context{frames} //= [] }, {
                 file => $2,
                 line => $3,
