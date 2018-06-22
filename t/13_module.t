@@ -2,7 +2,6 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Ref::Util qw/ is_scalarref /;
 use Test::More;
 
 my $CLASS = 'JavaScript::Duktape::XS';

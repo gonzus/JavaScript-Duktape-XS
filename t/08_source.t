@@ -4,7 +4,7 @@ use warnings;
 use Data::Dumper;
 use Path::Tiny;
 use Test::More;
-use Ref::Util qw/ is_arrayref /;
+# use Ref::Util qw/ is_arrayref /;
 
 my $CLASS = 'JavaScript::Duktape::XS';
 
@@ -110,7 +110,7 @@ EOS
                 ok(exists $frame->{file}, "frame $context_no.$frame_no has member file");
                 ok(exists $frame->{line}, "frame $context_no.$frame_no has member line");
                 ok(exists $frame->{line_offset}, "frame $context_no.$frame_no has member line_offset");
-                ok(is_arrayref($frame->{lines}), "frame $context_no.$frame_no has member lines as arrayref");
+                ok(ref( $frame->{lines} ) eq 'ARRAY', "frame $context_no.$frame_no has member lines as arrayref");
             }
         }
 
