@@ -56,7 +56,10 @@ sub parse_js_stacktrace {
     #   } ]
     my @contexts;
     foreach my $line (@$stacktrace_lines) {
-        my @texts = split /\n/, trim($line);
+        $line = trim($line);
+        next unless $line;
+
+        my @texts = split /\n/, $line;
         my %context;
         $context{frames} = [];
         foreach my $text (@texts) {
@@ -65,7 +68,7 @@ sub parse_js_stacktrace {
 
             $context{message} = $text unless exists $context{message};
 
-            next unless $text =~ m/^\s*at\s*(\S*)\s*\((.*):([0-9]+)\)\s*$/;
+            next unless $text =~ m/^\s*at\s*(\S*)\s*\(([^:]*):([0-9]+)(:([0-9]+))?\)\s*$/;
             push @{ $context{frames} //= [] }, {
                 file => $2,
                 line => $3,

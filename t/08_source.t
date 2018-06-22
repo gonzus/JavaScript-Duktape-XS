@@ -100,7 +100,7 @@ EOS
         my $context_no = 0;
         foreach my $context (@$contexts) {
             ++$context_no;
-            like($context->{message}, qr/identifier '.*' undefined/,
+            like($context->{message}, qr/:.*(not |un)defined/,
                  "context $context_no contains error message");
             is(scalar @{ $context->{frames} }, 2,
                "context $context_no contains correct number of frames");
