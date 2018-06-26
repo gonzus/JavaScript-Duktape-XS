@@ -36,10 +36,10 @@ sub _get_js_source_fragment {
 }
 
 sub parse_js_stacktrace {
-    my ($self, $stacktrace_lines, $desired_frames, $interesting_files) = @_;
+    my ($self, $stacktrace_lines, $desired_frames, $priority_files) = @_;
 
     $desired_frames //= 1;
-    my %interesting_files = map +( $_ => 1 ), @{ $interesting_files // [] };
+    my %priority_files = map +( $_ => 1 ), @{ $priority_files // [] };
 
     # @contexts => [ {
     #   message => "undefined variable foo",
@@ -55,7 +55,8 @@ sub parse_js_stacktrace {
     #       ],
     #   }, {...} ]
     #   } ]
-    my @contexts;
+    my @contexts_hiprio;
+    my @contexts_normal;
     foreach my $line (@$stacktrace_lines) {
         $line = trim($line);
         next unless $line;
@@ -74,11 +75,6 @@ sub parse_js_stacktrace {
 
             next unless $text =~ m/^\s*at\s*(\S*)\s*\(([^:]*):([0-9]+)(:([0-9]+))?\)/;
 
-            if ($interesting_files && !exists $interesting_files{$2}) {
-                delete $context{message};
-                last;
-            }
-
             push @{ $context{frames} //= [] }, {
                 file => $2,
                 line => $3,
@@ -86,10 +82,20 @@ sub parse_js_stacktrace {
             last if scalar @{ $context{frames} } >= $desired_frames;
         }
         next unless exists $context{message};
+        next unless scalar @{ $context{frames} };
+        my $top_file = $context{frames}[0]{file};
+        next unless $top_file;
+
         _get_js_source_fragment(\%context);
-        push @contexts, \%context;
+        if ($priority_files && exists $priority_files{$top_file}) {
+            push @contexts_hiprio, \%context;
+        }
+        else {
+            push @contexts_normal, \%context;
+        }
+
     }
-    return \@contexts;
+    return [ @contexts_hiprio, @contexts_normal ];
 }
 
 1;
@@ -277,6 +283,10 @@ Parse a JavaScript stacktrace (usually returned via C<get_msgs>) and obtain
 structured information from it.  For each of the number of frames requested
 (default to 1), it gets the error message, the file name and line number where
 the error happened, and an array of lines surrounding the actual error message.
+
+The optional third parameter is an arrayref containing names of files that
+should be treated as top priority, meaning any errors pointing to those files
+will appear first in the returned stacktrace information.
 
 =head2 run_gc
 
