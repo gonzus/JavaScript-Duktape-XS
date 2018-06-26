@@ -1,3 +1,6 @@
+0.000067    2018-06-10
+            * Be explicit about imports from Test::Output.
+
 0.000066    2018-06-10
             * Allow saying which files should be prioritised for a stack trace.
             * Cleanup eventloop implementation, removing code that deals with
