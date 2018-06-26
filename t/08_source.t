@@ -4,7 +4,6 @@ use warnings;
 use Data::Dumper;
 use Path::Tiny;
 use Test::More;
-# use Ref::Util qw/ is_arrayref /;
 
 my $CLASS = 'JavaScript::Duktape::XS';
 

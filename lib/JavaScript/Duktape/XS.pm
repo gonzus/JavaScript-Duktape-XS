@@ -6,7 +6,7 @@ use parent 'Exporter';
 use Text::Trim qw(trim rtrim);
 use XSLoader;
 
-our $VERSION = '0.000065';
+our $VERSION = '0.000066';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
@@ -112,7 +112,7 @@ engine
 
 =head1 VERSION
 
-Version 0.000065
+Version 0.000066
 
 =head1 SYNOPSIS
 
