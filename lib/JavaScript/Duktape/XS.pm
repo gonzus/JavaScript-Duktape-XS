@@ -308,8 +308,13 @@ details.
 
 =head1 SEE ALSO
 
-L<< https://metacpan.org/pod/JavaScript::Duktape >>
-L<< https://metacpan.org/pod/JavaScript::V8::XS >>
+=over 4
+
+=item * L<< https://metacpan.org/pod/JavaScript::Duktape >>
+
+=item * L<< https://metacpan.org/pod/JavaScript::V8::XS >>
+
+=back
 
 =head1 LICENSE
 
