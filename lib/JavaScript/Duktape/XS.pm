@@ -151,6 +151,8 @@ Version 0.000067
     my $msgs_href = $vm->get_msgs();
     $vm->reset_msgs();
 
+    my $globals = $vm->global_objects();
+
     my $context = $vm->parse_js_stacktrace($stacktrace_lines, 2);
 
     my $rounds = $vm->run_gc();
@@ -275,6 +277,10 @@ object with option C<save_messages> set to true.
 =head2 reset_msgs
 
 Reset the accumulated messages, as if the XS object had just been created.
+
+=head2 global_objects
+
+Get an arrayref with the names of all global objects known to JavaScript.
 
 =head2 parse_js_stacktrace
 

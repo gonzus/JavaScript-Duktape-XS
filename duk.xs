@@ -253,3 +253,14 @@ run_gc(Duk* duk)
     RETVAL = newSVnv(pl_run_gc(duk));
     pl_stats_stop(aTHX_ duk, &stats, "run_gc");
   OUTPUT: RETVAL
+
+SV*
+global_objects(Duk* duk)
+  PREINIT:
+    Stats stats;
+  CODE:
+    TIMEOUT_RESET(duk);
+    pl_stats_start(aTHX_ duk, &stats);
+    RETVAL = pl_global_objects(duk);
+    pl_stats_stop(aTHX_ duk, &stats, "global_objects");
+  OUTPUT: RETVAL

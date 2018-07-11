@@ -47,6 +47,11 @@ sub test_set_get_and_exists {
         is_deeply($got, $expected, "set and get for [$case]")
             or printf STDERR ("%s", Dumper({got => $got, expected => $expected}));
     }
+    my %globals = map +( $_ => 1 ), @{ $vm->global_objects() };
+    foreach my $case (sort keys %values) {
+        my $name = "name_$case";
+        ok(exists $globals{$name}, "global '$name' exists");
+    }
 }
 
 sub test_eval {
@@ -122,6 +127,10 @@ sub test_roundtrip {
 
         my $got_get = $vm->get($js_name);
         is_deeply($got_get, $args, "return value from perl_test() works for $name");
+    }
+    my %globals = map +( $_ => 1 ), @{ $vm->global_objects() };
+    foreach my $name (sort keys %args) {
+        ok(exists $globals{$name}, "global '$name' exists");
     }
 }
 
