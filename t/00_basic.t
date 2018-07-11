@@ -62,7 +62,6 @@ sub test_eval {
         printf("HOI [%s]\n", join(",", map +(defined $_ ? $_ : "UNDEF"), @_));
         return scalar @_;
     };
-    $vm->set('gonzo' => $callback);
     my @commands = (
         [ "'gonzo'" => 'gonzo' ],
         [ "3+4*5"   => 23 ],
@@ -79,6 +78,8 @@ sub test_eval {
     );
 
     foreach my $cmd (@commands) {
+        $vm->reset();
+        $vm->set('gonzo' => $callback);
         my ($js, $expected_return, $expected_output) = @$cmd;
         $expected_output //= '';
         $expected_output = quotemeta($expected_output);

@@ -28,6 +28,7 @@
  * a duktape context.  We will add other stuff here.
  */
 typedef struct Duk {
+    int inited;
     duk_context* ctx;
     int pagesize_bytes;
     unsigned long flags;

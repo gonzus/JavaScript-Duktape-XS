@@ -41,6 +41,46 @@ static void duk_fatal_error_handler(void* udata, const char* msg)
     abort();
 }
 
+static void set_up(Duk* duk)
+{
+    if (duk->inited) {
+        return;
+    }
+    duk->inited = 1;
+
+    duk->ctx = duk_create_heap(pl_sandbox_alloc, pl_sandbox_realloc, pl_sandbox_free, duk, duk_fatal_error_handler);
+    if (!duk->ctx) {
+        croak("Could not create duk heap\n");
+    }
+
+    TIMEOUT_RESET(duk);
+
+    /* register a bunch of native functions */
+    pl_register_native_functions(duk);
+
+    /* initialize module handling functions */
+    pl_register_module_functions(duk);
+
+    /* register event loop dispatcher */
+    pl_register_eventloop(duk);
+
+    /* inline a bunch of JS functions */
+    pl_register_inlined_functions(duk);
+
+    /* initialize console object */
+    pl_console_init(duk);
+}
+
+static void tear_down(Duk* duk)
+{
+    if (!duk->inited) {
+        return;
+    }
+    duk->inited = 0;
+
+    duk_destroy_heap(duk->ctx);
+}
+
 static Duk* create_duktape_object(pTHX_ HV* opt)
 {
     Duk* duk = (Duk*) malloc(sizeof(Duk));
@@ -91,28 +131,7 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
         }
     }
 
-    duk->ctx = duk_create_heap(pl_sandbox_alloc, pl_sandbox_realloc, pl_sandbox_free, duk, duk_fatal_error_handler);
-    if (!duk->ctx) {
-        croak("Could not create duk heap\n");
-    }
-
-    TIMEOUT_RESET(duk);
-
-    /* register a bunch of native functions */
-    pl_register_native_functions(duk);
-
-    /* initialize module handling functions */
-    pl_register_module_functions(duk);
-
-    /* register event loop dispatcher */
-    pl_register_eventloop(duk);
-
-    /* inline a bunch of JS functions */
-    pl_register_inlined_functions(duk);
-
-    /* initialize console object */
-    pl_console_init(duk);
-
+    set_up(duk);
     return duk;
 }
 
@@ -120,7 +139,7 @@ static int session_dtor(pTHX_ SV* sv, MAGIC* mg)
 {
     Duk* duk = (Duk*) mg->mg_ptr;
     UNUSED_ARG(sv);
-    duk_destroy_heap(duk->ctx);
+    tear_down(duk);
     return 0;
 }
 
@@ -137,6 +156,12 @@ new(char* CLASS, HV* opt = NULL)
     UNUSED_ARG(opt);
     RETVAL = create_duktape_object(aTHX_ opt);
   OUTPUT: RETVAL
+
+void
+reset(Duk* duk)
+  PPCODE:
+    tear_down(duk);
+    set_up(duk);
 
 HV*
 get_stats(Duk* duk)
