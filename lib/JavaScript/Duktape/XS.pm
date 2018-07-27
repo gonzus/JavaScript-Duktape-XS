@@ -127,6 +127,7 @@ Version 0.000068
 
     $vm->set('global_name', [1, 2, 3]);
     my $aref = $vm->get('global_name');
+    $vm->remove('global_name');
 
     $vm->set('my.object.slot', { foo => [ 4, 5 ] });
     my $href = $vm->get('my.object.slot');
@@ -220,6 +221,10 @@ Get the value stored in a JavaScript variable or object slot.
 The JavaScript value is converted into an equivalent Perl value, so you can
 freely pass nested structures (hashes of arrays of hashes) and they will be
 handled correctly.
+
+=head2 remove
+
+Remove a JavaScript variable or object slot.
 
 =head2 exists
 

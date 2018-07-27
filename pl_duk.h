@@ -72,6 +72,7 @@ SV* pl_typeof_global_or_property(pTHX_ duk_context* ctx, const char* name);
 SV* pl_instanceof_global_or_property(pTHX_ duk_context* ctx, const char* object, const char* class);
 SV* pl_get_global_or_property(pTHX_ duk_context* ctx, const char* name);
 int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* value);
+int pl_del_global_or_property(pTHX_ duk_context* ctx, const char* name);
 SV* pl_eval(pTHX_ Duk* duk, const char* js, const char* file);
 
 /* Run the Duktape GC */
