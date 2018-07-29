@@ -547,9 +547,8 @@ int pl_run_gc(Duk* duk)
     return PL_GC_RUNS;
 }
 
-SV* pl_global_objects(Duk* duk)
+SV* pl_global_objects(pTHX_ duk_context* ctx)
 {
-    duk_context* ctx = duk->ctx;
     int count = 0;
     AV* values = newAV();
 

@@ -78,6 +78,6 @@ SV* pl_eval(pTHX_ Duk* duk, const char* js, const char* file);
 /* Run the Duktape GC */
 int pl_run_gc(Duk* duk);
 
-SV* pl_global_objects(Duk* duk);
+SV* pl_global_objects(pTHX_ duk_context* ctx);
 
 #endif

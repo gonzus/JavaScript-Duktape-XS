@@ -295,10 +295,12 @@ run_gc(Duk* duk)
 SV*
 global_objects(Duk* duk)
   PREINIT:
+    duk_context* ctx = 0;
     Stats stats;
   CODE:
     TIMEOUT_RESET(duk);
+    ctx = duk->ctx;
     pl_stats_start(aTHX_ duk, &stats);
-    RETVAL = pl_global_objects(duk);
+    RETVAL = pl_global_objects(aTHX_ ctx);
     pl_stats_stop(aTHX_ duk, &stats, "global_objects");
   OUTPUT: RETVAL
