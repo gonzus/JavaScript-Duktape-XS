@@ -1,3 +1,5 @@
+#include "duk_console.h"
+#include "c_eventloop.h"
 #include "pl_stats.h"
 #include "pl_util.h"
 #include "pl_duk.h"
@@ -496,33 +498,49 @@ SV* pl_eval(pTHX_ Duk* duk, const char* js, const char* file)
 {
     SV* ret = &PL_sv_undef; /* return undef by default */
     duk_context* ctx = duk->ctx;
-    Stats stats;
-    duk_uint_t flags = 0;
     duk_int_t rc = 0;
 
-    /* flags |= DUK_COMPILE_STRICT; */
+    do {
+        Stats stats;
+        duk_uint_t flags = 0;
 
-    pl_stats_start(aTHX_ duk, &stats);
-    if (!file) {
-        rc = duk_pcompile_string(ctx, flags, js);
-    }
-    else {
-        duk_push_string(ctx, file);
-        rc = duk_pcompile_string_filename(ctx, flags, js);
-    }
-    pl_stats_stop(aTHX_ duk, &stats, "compile");
+        /* flags |= DUK_COMPILE_STRICT; */
 
-    if (rc != DUK_EXEC_SUCCESS) {
-        croak("JS could not compile code: %s\n", duk_safe_to_string(ctx, -1));
-    }
+        pl_stats_start(aTHX_ duk, &stats);
+        if (!file) {
+            /* Compile the requested code without a reference to the file where it lives */
+            rc = duk_pcompile_string(ctx, flags, js);
+        }
+        else {
+            /* Compile the requested code referencing the file where it lives */
+            duk_push_string(ctx, file);
+            rc = duk_pcompile_string_filename(ctx, flags, js);
+        }
+        pl_stats_stop(aTHX_ duk, &stats, "compile");
+        if (rc != DUK_EXEC_SUCCESS) {
+            /* Only for an error this early we print something out and bail out */
+            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
+                            "JS could not compile code: %s\n",
+                            duk_safe_to_string(ctx, -1));
+            break;
+        }
 
-    pl_stats_start(aTHX_ duk, &stats);
-    rc = duk_pcall(ctx, 0);
-    pl_stats_stop(aTHX_ duk, &stats, "run");
-    check_duktape_call_for_errors(rc, ctx);
+        /* Run the requested code and check for possible errors*/
+        pl_stats_start(aTHX_ duk, &stats);
+        rc = duk_pcall(ctx, 0);
+        pl_stats_stop(aTHX_ duk, &stats, "run");
+        check_duktape_call_for_errors(rc, ctx);
 
-    ret = pl_duk_to_perl(aTHX_ ctx, -1);
-    duk_pop(ctx);
+        /* Convert returned value to Perl and pop it off the stack */
+        ret = pl_duk_to_perl(aTHX_ ctx, -1);
+        duk_pop(ctx);
+
+        /* Launch eventloop and check for errors again. */
+        /* This call only returns after the eventloop terminates. */
+        rc = duk_safe_call(ctx, eventloop_run, duk, 0 /*nargs*/, 1 /*nrets*/);
+        check_duktape_call_for_errors(rc, ctx);
+    } while (0);
+
     return ret;
 }
 
