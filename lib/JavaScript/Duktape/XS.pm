@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use parent 'Exporter';
 
+use JSON::PP;
 use Text::Trim qw(trim rtrim);
 use XSLoader;
 

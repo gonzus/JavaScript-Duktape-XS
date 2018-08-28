@@ -6,6 +6,11 @@
 
 #define PL_GC_RUNS 2
 
+#define PL_JSON_CLASS                         "JSON::PP"
+#define PL_JSON_BOOLEAN_CLASS  PL_JSON_CLASS  "::" "Boolean"
+#define PL_JSON_BOOLEAN_TRUE   PL_JSON_CLASS  "::" "true"
+#define PL_JSON_BOOLEAN_FALSE  PL_JSON_CLASS  "::" "false"
+
 static duk_ret_t perl_caller(duk_context* ctx);
 
 static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
@@ -19,7 +24,8 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
         }
         case DUK_TYPE_BOOLEAN: {
             duk_bool_t val = duk_get_boolean(ctx, pos);
-            ret = newSViv(val);
+            ret = get_sv(val ? PL_JSON_BOOLEAN_TRUE : PL_JSON_BOOLEAN_FALSE, 0);
+            SvREFCNT_inc(ret);
             break;
         }
         case DUK_TYPE_NUMBER: {
@@ -134,6 +140,9 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
     int ret = 1;
     if (!SvOK(value)) {
         duk_push_null(ctx);
+    } else if (sv_isa(value, PL_JSON_BOOLEAN_CLASS)) {
+        int val = SvTRUE(value);
+        duk_push_boolean(ctx, val);
     } else if (SvIOK(value)) {
         int val = SvIV(value);
         duk_push_int(ctx, val);
@@ -146,7 +155,8 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
         duk_push_lstring(ctx, vstr, vlen);
     } else if (SvROK(value)) {
         SV* ref = SvRV(value);
-        if (SvTYPE(ref) == SVt_PVAV) {
+        int type = SvTYPE(ref);
+        if (type == SVt_PVAV) {
             AV* values = (AV*) ref;
             char kstr[100];
             int klen = sprintf(kstr, "%p", values);
@@ -180,7 +190,7 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
                     ++count;
                 }
             }
-        } else if (SvTYPE(ref) == SVt_PVHV) {
+        } else if (type == SVt_PVHV) {
             HV* values = (HV*) ref;
             char kstr[100];
             int klen = sprintf(kstr, "%p", values);
@@ -230,7 +240,7 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen)
                     }
                 }
             }
-        } else if (SvTYPE(ref) == SVt_PVCV) {
+        } else if (type == SVt_PVCV) {
             /* use perl_caller as generic handler, but store the real callback */
             /* in a slot, from where we can later retrieve it */
             SV* func = newSVsv(value);
