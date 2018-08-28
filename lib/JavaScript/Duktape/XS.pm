@@ -7,7 +7,7 @@ use JSON::PP;
 use Text::Trim qw(trim rtrim);
 use XSLoader;
 
-our $VERSION = '0.000070';
+our $VERSION = '0.000071';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
@@ -112,7 +112,7 @@ engine
 
 =head1 VERSION
 
-Version 0.000070
+Version 0.000071
 
 =head1 SYNOPSIS
 
