@@ -3,100 +3,13 @@ use strict;
 use warnings;
 use parent 'Exporter';
 
-use JSON::PP;
-use Text::Trim qw(trim rtrim);
+use JSON::PP;  # required to properly handle booleans
 use XSLoader;
 
 our $VERSION = '0.000071';
 XSLoader::load( __PACKAGE__, $VERSION );
 
 our @EXPORT_OK = qw[];
-
-sub _get_js_source_fragment {
-    my ($context, $range) = @_;
-
-    $range //= 5;
-    foreach my $frame (@{ $context->{frames} }) {
-        open my $fh, '<', $frame->{file};
-        if (!$fh) {
-            # TODO: error message?
-            return;
-        }
-        my $lineno = 0;
-        my @lines;
-        while (my $line = <$fh>) {
-            ++$lineno;
-            next unless $lineno >= ($frame->{line} - $range);
-            $frame->{line_offset} = $lineno unless exists $frame->{line_offset};
-
-            last unless $lineno <= ($frame->{line} + $range);
-            push @lines, rtrim($line);
-        }
-        $frame->{lines} = \@lines;
-    }
-}
-
-sub parse_js_stacktrace {
-    my ($self, $stacktrace_lines, $desired_frames, $priority_files) = @_;
-
-    $desired_frames //= 1;
-    my %priority_files = map +( $_ => 1 ), @{ $priority_files // [] };
-
-    # @contexts => [ {
-    #   message => "undefined variable foo",
-    #   frames => [ {
-    #       file => 'foo.js',
-    #       line => 232,  # line 232 is the one with the error
-    #       line_offset => 230, # first line in @lines is 230
-    #       lines => [
-    #           "function a()",
-    #           "{",
-    #           "  return foo.length",
-    #           "}",
-    #       ],
-    #   }, {...} ]
-    #   } ]
-    my @contexts_hiprio;
-    my @contexts_normal;
-    foreach my $line (@$stacktrace_lines) {
-        $line = trim($line);
-        next unless $line;
-
-        my @texts = split /\n/, $line;
-        my %context;
-        $context{frames} = [];
-        foreach my $text (@texts) {
-            $text = trim($text);
-            next unless $text;
-
-            # skip any of Duktape's internal functions
-            next if $text =~ m/^\s*at\s*.*internal$/;
-
-            $context{message} = $text unless exists $context{message};
-
-            next unless $text =~ m/^\s*at\s*(\S*)\s*\(([^:]*):([0-9]+)(:([0-9]+))?\)/;
-
-            push @{ $context{frames} //= [] }, {
-                file => $2,
-                line => $3,
-            };
-            last if scalar @{ $context{frames} } >= $desired_frames;
-        }
-        next unless exists $context{message};
-        next unless scalar @{ $context{frames} };
-        my $top_file = $context{frames}[0]{file};
-        next unless $top_file;
-
-        _get_js_source_fragment(\%context);
-        if ($priority_files && exists $priority_files{$top_file}) {
-            push @contexts_hiprio, \%context;
-        }
-        else {
-            push @contexts_normal, \%context;
-        }
-    }
-    return [ @contexts_hiprio, @contexts_normal ];
-}
 
 1;
 __END__
@@ -152,8 +65,6 @@ Version 0.000071
     $vm->reset_msgs();
 
     my $globals = $vm->global_objects();
-
-    my $context = $vm->parse_js_stacktrace($stacktrace_lines, 2);
 
     my $rounds = $vm->run_gc();
 
@@ -277,17 +188,6 @@ Reset the accumulated messages, as if the XS object had just been created.
 =head2 global_objects
 
 Get an arrayref with the names of all global objects known to JavaScript.
-
-=head2 parse_js_stacktrace
-
-Parse a JavaScript stacktrace (usually returned via C<get_msgs>) and obtain
-structured information from it.  For each of the number of frames requested
-(default to 1), it gets the error message, the file name and line number where
-the error happened, and an array of lines surrounding the actual error message.
-
-The optional third parameter is an arrayref containing names of files that
-should be treated as top priority, meaning any errors pointing to those files
-will appear first in the returned stacktrace information.
 
 =head2 run_gc
 
