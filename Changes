@@ -1,3 +1,6 @@
+0.000072    2018-08-30
+            * Get rid of parse_js_stacktrace -- too specific.
+
 0.000071    2018-08-28
             * Convert JS booleans into JSON::PP::Boolean objects.
               This allows us to roundtrip, especially for cases such as
