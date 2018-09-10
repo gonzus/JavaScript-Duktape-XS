@@ -461,10 +461,7 @@ int pl_set_global_or_property(pTHX_ duk_context* ctx, const char* name, SV* valu
 {
     int len = 0;
     int last_dot = 0;
-    if (sv_isobject(value)) {
-        SV* obj = newSVsv(value);
-        duk_push_pointer(ctx, obj);
-    } else if (!pl_perl_to_duk(aTHX_ value, ctx)) {
+    if (!pl_perl_to_duk(aTHX_ value, ctx)) {
         return 0;
     }
     last_dot = find_last_dot(name, &len);
