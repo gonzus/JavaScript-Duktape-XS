@@ -46,7 +46,6 @@ t/04_console.t
 t/05_stats.t
 t/06_stacktrace.t
 t/07_grab.t
-t/08_source.t
 t/09_encoding.t
 t/10_run_gc.t
 t/11_typeof.t
