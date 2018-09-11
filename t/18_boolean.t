@@ -4,6 +4,7 @@ use warnings;
 use Data::Dumper;
 use Time::HiRes;
 use Test::More;
+use JSON::PP;
 
 my $CLASS = 'JavaScript::Duktape::XS';
 
