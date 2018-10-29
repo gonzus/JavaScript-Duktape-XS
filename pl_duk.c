@@ -350,6 +350,7 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
     duk_idx_t j = 0;
     duk_idx_t nargs = 0;
     SV* ret = 0;
+    SV *err_tmp;
 
     /* prepare Perl environment for calling the CV */
     dTHX;
@@ -369,6 +370,11 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
     PUTBACK;
     call_sv(func, G_SCALAR | G_EVAL);
     SPAGAIN;
+
+    err_tmp = ERRSV;
+    if (SvTRUE(err_tmp)) {
+        croak("Perl sub died with error: %s", SvPV_nolen(err_tmp));
+    }
 
     /* get returned value from Perl and push its JS equivalent back in */
     /* duktape's stack */
