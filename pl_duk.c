@@ -138,6 +138,11 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
 static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int ref)
 {
     int ret = 1;
+    if (SvTYPE(value) >= SVt_PVMG) {
+        /* any Perl SV that has magic (think tied objects) needs to have that
+         * magic actually called to retrieve the value */
+        mg_get(value);
+    }
     if (!SvOK(value)) {
         duk_push_null(ctx);
     } else if (sv_isa(value, PL_JSON_BOOLEAN_CLASS)) {
