@@ -266,7 +266,7 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int 
                 croak("Could not associate C dispatcher and Perl callback\n");
             }
         } else {
-            croak("Don't know how to deal with an undetermined Perl reference\n");
+            croak("Don't know how to deal with an undetermined Perl reference (type: %d)\n", type);
             ret = 0;
         }
     } else {
