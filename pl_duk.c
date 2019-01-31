@@ -13,6 +13,8 @@
 
 static duk_ret_t perl_caller(duk_context* ctx);
 
+static HV* seen;
+
 static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
 {
     SV* ret = &PL_sv_undef; /* return undef by default */
@@ -278,17 +280,21 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int 
 
 SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
 {
-    HV* seen = newHV();
+    if (!seen) {
+        seen = newHV();
+    }
     SV* ret = pl_duk_to_perl_impl(aTHX_ ctx, pos, seen);
-    hv_undef(seen);
+    hv_clear(seen);
     return ret;
 }
 
 int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
 {
-    HV* seen = newHV();
+    if (!seen) {
+        seen = newHV();
+    }
     int ret = pl_perl_to_duk_impl(aTHX_ value, ctx, seen, 0);
-    hv_undef(seen);
+    hv_clear(seen);
     return ret;
 }
 
