@@ -596,6 +596,8 @@ SV* pl_eval(pTHX_ Duk* duk, const char* js, const char* file)
         /* This call only returns after the eventloop terminates. */
         rc = duk_safe_call(ctx, eventloop_run, duk, 0 /*nargs*/, 1 /*nrets*/);
         check_duktape_call_for_errors(rc, ctx);
+
+        duk_pop(ctx); /* pop return value from duk_safe_call */
     } while (0);
 
     return ret;
