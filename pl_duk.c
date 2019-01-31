@@ -377,6 +377,9 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
         mXPUSHs(val);
     }
 
+    /* you would think we need to pop off the args from duktape's stack, but
+     * they get popped off somewhere else, probably by duktape itself */
+
     /* call actual Perl CV, passing all params */
     PUTBACK;
     call_sv(func, G_SCALAR | G_EVAL);
@@ -486,7 +489,9 @@ SV* pl_get_global_or_property(pTHX_ duk_context* ctx, const char* name)
 {
     SV* ret = &PL_sv_undef; /* return undef by default */
     if (find_global_or_property(ctx, name)) {
+        /* Convert found value to Perl and pop it off the stack */
         ret = pl_duk_to_perl(aTHX_ ctx, -1);
+        duk_pop(ctx);
     }
     return ret;
 }
