@@ -145,7 +145,7 @@ void duk_console_init(duk_context *ctx, duk_uint_t flags) {
 		"(function (E) {"
 		    "return function format(v){"
 		        "try{"
-		            "return E('jx',v);"
+		            "return JSON_stringify_with_cycles(v);"  /* String() allows symbols, ToString() internal algorithm doesn't. */
 		        "}catch(e){"
 		            "return String(v);"  /* String() allows symbols, ToString() internal algorithm doesn't. */
 		        "}"

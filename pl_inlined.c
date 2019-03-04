@@ -105,6 +105,28 @@ static struct {
         "}\n"
         "\n"
     },
+    {
+        "log_cyclic.js",
+
+        "function JSON_stringify_with_cycles(obj) {\n"
+        "  function getCircularReplacer() {\n"
+        "    var seen = {};\n"
+        "    var count = 0;\n"
+        "    return function(key, value) {\n"
+        "      if (typeof value === \"object\" && value !== null) {\n"
+        "        if (seen.hasOwnProperty(value)) {\n"
+        "          return \"<cycle\" + seen[value] + \">\";\n"
+        "        }\n"
+        "        seen[value] = count++;\n"
+        "      }\n"
+        "      return value;\n"
+        "    };\n"
+        "  };\n"
+        "\n"
+        "  return JSON.stringify(obj, getCircularReplacer());\n"
+        "}\n"
+        "\n"
+    },
 };
 
 void pl_register_inlined_functions(Duk* duk)
@@ -112,6 +134,7 @@ void pl_register_inlined_functions(Duk* duk)
     size_t j = 0;
     dTHX;
     for (j = 0; j < sizeof(js_inlined) / sizeof(js_inlined[0]); ++j) {
+        fprintf(stderr, "Registering functions in [%s]\n", js_inlined[j].file_name);
         pl_eval(aTHX_ duk, js_inlined[j].source, js_inlined[j].file_name);
     }
 }
