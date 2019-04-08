@@ -154,15 +154,15 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int 
         int val = SvTRUE(value);
         duk_push_boolean(ctx, val);
     } else if (SvIOK(value)) {
-        int val = SvIV(value);
+        long val = SvIV(value);
         if (ref && (val == 0 || val == 1)) {
             duk_push_boolean(ctx, val);
         } else {
-            duk_push_int(ctx, val);
+            duk_push_number(ctx, (duk_double_t) val);
         }
     } else if (SvNOK(value)) {
         double val = SvNV(value);
-        duk_push_number(ctx, val);
+        duk_push_number(ctx, (duk_double_t) val);
     } else if (SvPOK(value)) {
         STRLEN vlen = 0;
         const char* vstr = SvPV_const(value, vlen);
