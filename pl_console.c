@@ -68,7 +68,7 @@ static int save_console_messages(duk_uint_t flags, void* data,
     SV* message = newSVpvs("");
     va_list args_copy;
     va_copy(args_copy, ap);
-    sv_vcatpvf(aTHX_ message, fmt, &args_copy);
+    sv_vcatpvf(message, fmt, &args_copy);
     save_msg(aTHX_ duk, target, message);
     return SvCUR(message);
 }
