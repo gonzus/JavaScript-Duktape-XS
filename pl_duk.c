@@ -193,7 +193,7 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int 
                     SvREFCNT_inc(uptr);
                 }
 
-                array_top = av_top_index(values);
+                array_top = av_len(values);
                 for (j = 0; j <= array_top; ++j) { /* yes, [0, array_top] */
                     SV** elem = av_fetch(values, j, 0);
                     if (!elem || !*elem) {

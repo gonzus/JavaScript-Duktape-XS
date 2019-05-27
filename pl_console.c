@@ -39,7 +39,7 @@ static void save_msg(pTHX_ Duk* duk, const char* target, SV* message)
             return;
         }
         data = (AV*) ref;
-        top = av_top_index(data);
+        top = av_len(data);
     } else {
         SV* ref = 0;
         data = newAV();
