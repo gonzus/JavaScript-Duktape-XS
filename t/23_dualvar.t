@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Scalar::Util 'dualvar';
+use Scalar::Util qw/ dualvar /;
 use JSON::PP;
 use Test::More;
 
@@ -11,10 +11,10 @@ my $CLASS = 'JavaScript::Duktape::XS';
 sub test_dualvars {
     my $vm = $CLASS->new();
     ok($vm, "created $CLASS object");
-    
+
     my $dualvar_implicit = "0345";
     $dualvar_implicit == 234 and die;
-    
+
     my $dualvar_expicit = dualvar(854, 'hi there');
 
     my %data = (
@@ -22,7 +22,7 @@ sub test_dualvars {
         array => [ 'xxx', $dualvar_expicit, $dualvar_implicit ],
         hash => { foo => $dualvar_implicit, bar => $dualvar_expicit, baz => 99 },
     );
-    
+
     my $j = JSON::PP->new->canonical(1)->allow_nonref(1);
 
     foreach my $type (sort keys %data) {
