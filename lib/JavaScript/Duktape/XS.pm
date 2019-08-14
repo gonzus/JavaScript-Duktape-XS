@@ -70,6 +70,8 @@ Version 0.000077
 
     my $rounds = $vm->run_gc();
 
+    my $info = $vm->get_version_info();
+
     $vm->set('perl_module_resolve', \&module_resolve);
     $vm->set('perl_module_load',    \&module_load);
     $vm->eval('var badger = require("badger");');
@@ -207,6 +209,10 @@ Run at least one round of the JavaScript garbage collector, and return the
 number of rounds that were effectively run.
 
 The documentation recommends to run two rounds, so that's what we always do.
+
+=head2 get_version_info
+
+Return a hashref with version information.
 
 =head1 MODULE SUPPORT
 
