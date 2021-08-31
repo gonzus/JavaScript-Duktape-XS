@@ -96,6 +96,11 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
                         }
                     }
                 }
+            } else if (duk_is_buffer_data(ctx, pos)) {
+                duk_size_t clen = 0;
+                const char* cstr = duk_get_buffer_data(ctx, pos, &clen);
+                ret = newSVpvn(cstr, clen);
+                break;
             } else { /* if (duk_is_object(ctx, pos)) { */
                 void* ptr = duk_get_heapptr(ctx, pos);
                 char kstr[100];
