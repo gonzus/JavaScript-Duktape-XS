@@ -295,20 +295,22 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int 
 
 SV* pl_duk_to_perl(pTHX_ duk_context* ctx, int pos)
 {
+    SV* ret = 0;
     if (!seen) {
         seen = newHV();
     }
-    SV* ret = pl_duk_to_perl_impl(aTHX_ ctx, pos, seen);
+    ret = pl_duk_to_perl_impl(aTHX_ ctx, pos, seen);
     hv_clear(seen);
     return ret;
 }
 
 int pl_perl_to_duk(pTHX_ SV* value, duk_context* ctx)
 {
+    int ret = 0;
     if (!seen) {
         seen = newHV();
     }
-    int ret = pl_perl_to_duk_impl(aTHX_ value, ctx, seen, 0);
+    ret = pl_perl_to_duk_impl(aTHX_ value, ctx, seen, 0);
     hv_clear(seen);
     return ret;
 }
@@ -713,22 +715,24 @@ static void add_hash_key_str(pTHX_ HV* hash, const char* key, const char* val)
 
 HV* pl_get_version_info(pTHX)
 {
+    int patch = 0;
+    int minor = 0;
+    int major = 0;
+    char buf[100];
     HV* version = newHV();
-
     long duk_version = DUK_VERSION;
-    int patch = duk_version % 100;
+
+    patch = duk_version % 100;
     duk_version /= 100;
-    int minor = duk_version % 100;
+    minor = duk_version % 100;
     duk_version /= 100;
-    int major = duk_version;
+    major = duk_version;
 
     add_hash_key_int(aTHX_ version, "major"  , major);
     add_hash_key_int(aTHX_ version, "minor"  , minor);
     add_hash_key_int(aTHX_ version, "patch"  , patch);
 
-    char buf[100];
     sprintf(buf, "%d.%d.%d", major, minor, patch);
-
     add_hash_key_str(aTHX_ version, "version", buf);
 
     return version;
