@@ -62,5 +62,6 @@ t/21_this_bug.t
 t/22_overflow.t
 t/23_dualvar.t
 t/24_version.t
+t/25_unicode.t
 t/50_stack_bug.t
 typemap
