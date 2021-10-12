@@ -84,5 +84,5 @@ int pl_run_gc(Duk* duk);
 SV* pl_global_objects(pTHX_ duk_context* ctx);
 
 HV* pl_get_version_info(pTHX);
-
+int pl_console_callback(void* data, duk_uint_t flags,const char* fmt, va_list ap);
 #endif

@@ -618,7 +618,7 @@ SV* pl_eval(pTHX_ Duk* duk, const char* js, const char* file)
         duk_uint_t flags = 0;
 
         /* flags |= DUK_COMPILE_STRICT; */
-
+        
         pl_stats_start(aTHX_ duk, &stats);
         if (!file) {
             /* Compile the requested code without a reference to the file where it lives */
@@ -632,7 +632,7 @@ SV* pl_eval(pTHX_ Duk* duk, const char* js, const char* file)
         pl_stats_stop(aTHX_ duk, &stats, "compile");
         if (rc != DUK_EXEC_SUCCESS) {
             /* Only for an error this early we print something out and bail out */
-            duk_console_log(DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
+            duk_console_log(ctx,DUK_CONSOLE_FLUSH | DUK_CONSOLE_TO_STDERR,
                             "JS could not compile code: %s\n",
                             duk_safe_to_string(ctx, -1));
             break;
