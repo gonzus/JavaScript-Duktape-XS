@@ -83,16 +83,28 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
                     array_top = duk_get_length(ctx, pos);
                     for (j = 0; j < array_top; ++j) {
                         SV* nested = 0;
-                        if (!duk_get_prop_index(ctx, pos, j)) {
-                            continue; /* index doesn't exist => end of array */
+
+                        bool exists = duk_get_prop_index(ctx, pos, j);
+
+                        /* NB: A nonexistent array value does NOT mean that */
+                        /* we are at the end of the array; for example, you */
+                        /* can do `foo[1] = 1` without defining `foo[0]`. */
+
+                        if (exists) {
+                            nested = sv_2mortal(pl_duk_to_perl_impl(aTHX_ ctx, -1, seen));
                         }
-                        nested = sv_2mortal(pl_duk_to_perl_impl(aTHX_ ctx, -1, seen));
-                        duk_pop(ctx); /* value in current pos */
-                        if (!nested) {
-                            croak("Could not create Perl SV for array\n");
-                        }
-                        if (av_store(values_array, j, nested)) {
-                            SvREFCNT_inc(nested);
+
+                        /* Even if the array value is nonexistent we still */
+                        /* have to remove it from the stack. */
+                        duk_pop(ctx);
+
+                        if (exists) {
+                            if (!nested) {
+                                croak("Could not create Perl SV for array\n");
+                            }
+                            if (av_store(values_array, j, nested)) {
+                                SvREFCNT_inc(nested);
+                            }
                         }
                     }
                 }
