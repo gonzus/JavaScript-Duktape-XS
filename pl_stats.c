@@ -22,7 +22,7 @@ static void save_stat(pTHX_ Duk* duk, const char* category, const char* name, do
         data = newHV();
         ref = newRV_noinc((SV*) data);
         if (hv_store(duk->stats, category, clen, ref, 0)) {
-            SvREFCNT_inc(ref);
+            //SvREFCNT_inc(ref); /* Not needed as ref is already 1 */
         }
         else {
             croak("Could not create category %s in stats\n", category);
