@@ -400,6 +400,7 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
     duk_idx_t nargs = 0;
     SV* ret = 0;
     SV *err_tmp;
+    Duk *duk;
 
     /* prepare Perl environment for calling the CV */
     dTHX;
@@ -425,7 +426,21 @@ int pl_call_perl_sv(duk_context* ctx, SV* func)
 
     err_tmp = ERRSV;
     if (SvTRUE(err_tmp)) {
-        croak("Perl sub died with error: %s", SvPV_nolen(err_tmp));
+        /* Get our duk pointer for this ctx. */
+        duk_push_thread_stash(ctx,ctx);
+        duk_get_prop_string(ctx, -1, PL_NAME_CONSOLE_GENERIC_CALLBACK);
+        duk = (Duk*) duk_get_pointer(ctx, -1);
+        duk_pop(ctx);
+
+        if (duk->flags & DUK_OPT_FLAG_CATCH_PERL_EXCEPTIONS) {
+              duk_push_error_object(ctx, DUK_ERR_ERROR, SvPV_nolen(err_tmp));
+              PUTBACK;
+              FREETMPS;
+              LEAVE;
+              return duk_throw(ctx);
+        } else {
+            croak("Perl sub died with error: %s", SvPV_nolen(err_tmp));
+        }
     }
 
     /* get returned value from Perl and push its JS equivalent back in */
