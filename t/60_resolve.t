@@ -63,7 +63,7 @@ sub test_failed_require {
 }
 
 sub test_failed_require_caught {
-	my $vm = create_duktape(catch_resolver_errors => 1);
+	my $vm = create_duktape(catch_perl_exceptions => 1);
 
 	my $retval = eval { $vm->eval(FAILED_REQUIRE) };
 	ok !$@, "nothing thrown";

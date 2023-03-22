@@ -11,7 +11,7 @@
 #define DUK_OPT_NAME_SAVE_MESSAGES          "save_messages"
 #define DUK_OPT_NAME_MAX_MEMORY_BYTES       "max_memory_bytes"
 #define DUK_OPT_NAME_MAX_TIMEOUT_US         "max_timeout_us"
-#define DUK_OPT_NAME_CATCH_PERL_EXCEPTIONS  "catch_resolver_errors"
+#define DUK_OPT_NAME_CATCH_PERL_EXCEPTIONS  "catch_perl_exceptions"
 
 #define DUK_OPT_FLAG_GATHER_STATS           0x01
 #define DUK_OPT_FLAG_SAVE_MESSAGES          0x02
