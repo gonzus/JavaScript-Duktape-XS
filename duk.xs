@@ -144,6 +144,10 @@ static Duk* create_duktape_object(pTHX_ HV* opt)
                 duk->max_timeout_us = param > MAX_TIMEOUT_MINIMUM ? param : MAX_TIMEOUT_MINIMUM;
                 continue;
             }
+            if (memcmp(kstr, DUK_OPT_NAME_CATCH_PERL_EXCEPTIONS, klen) == 0) {
+                duk->flags |= SvTRUE(value) ? DUK_OPT_FLAG_CATCH_PERL_EXCEPTIONS : 0;
+                continue;
+            }
             croak("Unknown option %*.*s\n", (int) klen, (int) klen, kstr);
         }
     }
