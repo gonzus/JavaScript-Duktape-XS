@@ -2,7 +2,14 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::MemoryGrowth;
+
+eval {
+	require Test::MemoryGrowth;
+};
+if ($@) {
+	plan skip_all => 'Test requires Test::MemoryGrowth.';
+	exit 0;
+}
 
 use JavaScript::Duktape::XS;
 
