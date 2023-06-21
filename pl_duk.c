@@ -17,7 +17,7 @@
 static duk_ret_t perl_caller(duk_context* ctx);
 
 static HV* seen;
-static int skip_func_create = 0; //A flag, when set we skip the creation of a perl function
+static int skip_func_create = 0; /*A flag, when set we skip the creation of a perl function */
 
 static inline SV* _cstr_to_svpv(pTHX_ const char* cstr, STRLEN clen) {
     SV* ret = newSVpv(cstr, clen);
@@ -571,7 +571,7 @@ int pl_set_global_or_property(pTHX_ Duk* duk, const char* name, SV* value)
 			if (! duk_put_prop_lstring(ctx, -2, PL_SLOT_GENERIC_CALLBACK, sizeof(PL_SLOT_GENERIC_CALLBACK) - 1)) {
 			    croak("Could not associate C dispatcher and Perl callback\n");
 			}
-            //Set the flag so we know not to create this function later. 
+            /*Set the flag so we know not to create this function later.  */
 			skip_func_create = 1;
 		}
 	}
