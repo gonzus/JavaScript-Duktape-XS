@@ -167,6 +167,8 @@ static SV* pl_duk_to_perl_impl(pTHX_ duk_context* ctx, int pos, HV* seen)
     return ret;
 }
 
+#include <stdio.h>
+
 static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int ref)
 {
     int ret = 1;
@@ -185,7 +187,7 @@ static int pl_perl_to_duk_impl(pTHX_ SV* value, duk_context* ctx, HV* seen, int 
         const char* vstr = SvPVutf8(value, vlen);
         duk_push_lstring(ctx, vstr, vlen);
     } else if (SvIOK(value)) {
-        long val = SvIV(value);
+        duk_int64_t val = SvIV(value);
         if (ref && (val == 0 || val == 1)) {
             duk_push_boolean(ctx, val);
         } else {
