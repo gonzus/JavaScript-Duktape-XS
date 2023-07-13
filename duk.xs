@@ -84,13 +84,13 @@ static void tear_down(Duk* duk)
 static void destroy_duktape_object(pTHX_ Duk* duk)
  {   
   if (duk) {   
-    //Free perl objects 
+    /* Free Perl objects.  */
     SvREFCNT_dec((SV *) duk->stats);
     SvREFCNT_dec((SV *) duk->msgs);
     if( duk->version) {
       SvREFCNT_dec((SV *) duk->version);
     }
-    //
+
     hv_clear(duk->funcref);  
     SvREFCNT_dec((SV *) duk->funcref);
     free(duk);
