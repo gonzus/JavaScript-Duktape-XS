@@ -38,7 +38,7 @@ typedef struct Duk {
     HV* version;
     HV* stats;
     HV* msgs;
-    HV* funcref; // Structure to hold the name and references to perl callbacks
+    HV* funcref; /* Structure to hold the name and references to perl callbacks */
     size_t total_allocated_bytes;
     size_t max_allocated_bytes;
     double max_timeout_us;;
